@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}SHALLOT · Register{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Register a passkey</h1>
+  <div id="msg"></div>
+  <form id="reg" onsubmit="return doRegister(event)">
+    <label for="username">Username</label>
+    <input id="username" required autocomplete="username">
+    <label for="display_name">Display name</label>
+    <input id="display_name" autocomplete="name">
+    <label for="role">Role</label>
+    <select id="role">
+      <option value="cub">cub — field node</option>
+      <option value="mama_bear">mama_bear — admin / gateway</option>
+    </select>
+    <button type="submit">Begin registration</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function doRegister(e){
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.className='msg'; msg.textContent='';
+  const username = document.getElementById('username').value.trim();
+  const display_name = document.getElementById('display_name').value.trim();
+  const role = document.getElementById('role').value;
+  const begin = await fetch('/register/begin', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username, display_name, role})});
+  if(!begin.ok){ msg.className='msg err'; msg.textContent=(await begin.json()).error; return; }
+  const options = await begin.json();
+  options.user.id = b64url_decode(options.user.id);
+  options.challenge = b64url_decode(options.challenge);
+  (options.excludeCredentials||[]).forEach(c=>c.id=b64url_decode(c.id));
+  let att;
+  try { att = await navigator.credentials.create({publicKey: options}); }
+  catch(err){ msg.className='msg err'; msg.textContent='Authenticator cancelled: '+err; return; }
+  const body = {
+    id: att.id, rawId: b64url_encode(att.rawId), type: att.type,
+    response: {
+      clientDataJSON: b64url_encode(att.response.clientDataJSON),
+      attestationObject: b64url_encode(att.response.attestationObject),
+      transports: att.response.getTransports ? att.response.getTransports() : []
+    }
+  };
+  const complete = await fetch('/register/complete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const out = await complete.json();
+  if(!complete.ok){ msg.className='msg err'; msg.textContent=out.error; return; }
+  msg.className='msg ok';
+  msg.innerHTML = '✓ Nyckel registrerad och verifierad för <strong>'+out.username+'</strong> ('+out.role+')<br>'+
+    '<small>credential: '+out.credential_id.slice(0,20)+'… · '+out.device_type+(out.backed_up?' · backed-up':'')+'</small>';
+  setTimeout(()=>location.href='{{ url_for("dashboard") }}', 1500);
+}
+</script>
+{% endblock %}
