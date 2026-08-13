@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}SHALLOT · Login{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Login</h1>
+  <div id="msg"></div>
+  <form onsubmit="return doLogin(event)">
+    <label for="username">Username (optional — leave blank for usernameless)</label>
+    <input id="username" autocomplete="username">
+    <button type="submit">Begin login</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function doLogin(e){
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.className='msg'; msg.textContent='';
+  const username = document.getElementById('username').value.trim();
+  const begin = await fetch('/login/begin', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username})});
+  if(!begin.ok){ msg.className='msg err'; msg.textContent=(await begin.json()).error; return; }
+  const options = await begin.json();
+  options.challenge = b64url_decode(options.challenge);
+  (options.allowCredentials||[]).forEach(c=>c.id=b64url_decode(c.id));
+  let ass;
+  try { ass = await navigator.credentials.get({publicKey: options}); }
+  catch(err){ msg.className='msg err'; msg.textContent='Authenticator cancelled: '+err; return; }
+  const body = {
+    id: ass.id, rawId: b64url_encode(ass.rawId), type: ass.type,
+    response: {
+      clientDataJSON: b64url_encode(ass.response.clientDataJSON),
+      authenticatorData: b64url_encode(ass.response.authenticatorData),
+      signature: b64url_encode(ass.response.signature),
+      userHandle: ass.response.userHandle ? b64url_encode(ass.response.userHandle) : null
+    }
+  };
+  const complete = await fetch('/login/complete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const out = await complete.json();
+  if(!complete.ok){ msg.className='msg err'; msg.textContent=out.error; return; }
+  msg.className='msg ok'; msg.textContent='Logged in';
+  setTimeout(()=>location.href='{{ url_for("dashboard") }}', 600);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}SHALLOT · Home{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>SHALLOT auth server</h1>
+  <p>Proximity-based OT access control via FIDO2 / WebAuthn passkeys.</p>
+  <p>Relying Party: <code>{{ rp_id }}</code></p>
+  <div class="row">
+    <a class="card" href="{{ url_for('register_get') }}" style="text-decoration:none"><div style="padding:1rem;text-align:center">Register a passkey</div></a>
+    <a class="card" href="{{ url_for('login_get') }}" style="text-decoration:none"><div style="padding:1rem;text-align:center">Login</div></a>
+  </div>
+  <p style="color:var(--mut);font-size:.85rem;margin-top:1.5rem">
+    Roles: <span class="pill">mama_bear</span> admin/gateway access point ·
+    <span class="pill">cub</span> field node / ID-bricka.
+  </p>
+</div>
+{% endblock %}

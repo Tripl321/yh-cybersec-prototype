@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SHALLOT{% endblock %}</title>
+  <style>
+    :root { --bg:#0f1419; --fg:#e6e6e6; --acc:#4fd1c5; --mut:#8a94a6; --card:#1a212b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+    header { padding:1rem 1.5rem; border-bottom:1px solid #253; display:flex; justify-content:space-between; align-items:center; }
+    header .brand { font-weight:700; letter-spacing:.08em; color:var(--acc); }
+    main { max-width:640px; margin:2rem auto; padding:0 1.5rem; }
+    .card { background:var(--card); border:1px solid #253; border-radius:10px; padding:1.5rem; }
+    label { display:block; margin:1rem 0 .35rem; color:var(--mut); font-size:.85rem; }
+    input, select { width:100%; padding:.6rem; border-radius:6px; border:1px solid #344; background:#0c1117; color:var(--fg); }
+    button { margin-top:1rem; width:100%; padding:.7rem; border:0; border-radius:6px; background:var(--acc); color:#04201d; font-weight:600; cursor:pointer; }
+    button.secondary { background:#2a3340; color:var(--fg); }
+    .row { display:flex; gap:.75rem; }
+    .row a { flex:1; }
+    .msg { margin-top:1rem; padding:.7rem; border-radius:6px; font-size:.9rem; }
+    .msg.err { background:#3a1d1d; color:#ffb4b4; }
+    .msg.ok { background:#163326; color:#9ff0c4; }
+    .pill { display:inline-block; padding:.15rem .6rem; border-radius:999px; font-size:.75rem; background:#2a3340; color:var(--acc); }
+    a { color:var(--acc); text-decoration:none; }
+    code { background:#0c1117; padding:.1rem .35rem; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">SHALLOT</span>
+    <nav>
+      {% if user %}
+        <span class="pill">{{ user.username }} · {{ user.role }}</span>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('register_get') }}">Register</a>
+        <a href="{{ url_for('login_get') }}">Login</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <script>
+    function b64url_decode(s){ s = s.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s), c=>c.charCodeAt(0)); }
+    function b64url_encode(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

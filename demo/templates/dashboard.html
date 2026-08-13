@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}SHALLOT · Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Access granted</h1>
+  <p>Welcome, <strong>{{ user.username }}</strong>.</p>
+  <p>Role: <span class="pill">{{ user.role }}</span></p>
+  {% if user.role == 'mama_bear' %}
+    <p style="color:var(--acc)">Gateway / admin privileges. You may provision field nodes.</p>
+  {% else %}
+    <p>You hold a field-node credential (ID-bricka). Proximity verification handled by Mama Bear.</p>
+  {% endif %}
+  <h2 style="font-size:1rem;margin-top:1.5rem">Registered credentials</h2>
+  {% if creds %}
+    <ul>
+      {% for c in creds %}
+        <li><span style="color:var(--acc)">✓ verifierad</span> <code>{{ c.credential_id[:24] }}…</code> — {{ c.fmt }}, sign#{{ c.sign_count }}{% if c.backed_up %}, backed-up{% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p style="color:var(--mut)">No credentials registered yet.</p>
+  {% endif %}
+  <a href="{{ url_for('register_get') }}"><button class="secondary">Add another passkey</button></a>
+</div>
+{% endblock %}
