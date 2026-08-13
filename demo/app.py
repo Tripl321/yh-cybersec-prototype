@@ -86,6 +86,9 @@ def create_app() -> Flask:
         username = (data.get("username") or "").strip()
         display_name = (data.get("display_name") or username).strip()
         role = data.get("role", "cub")
+        attestation_pref = data.get("attestation", "direct")
+        if attestation_pref not in ("direct", "none"):
+            return jsonify({"error": "invalid attestation preference"}), 400
         if not username:
             return jsonify({"error": "username required"}), 400
         if role not in ("mama_bear", "cub"):
@@ -101,7 +104,9 @@ def create_app() -> Flask:
             user_name=username,
             user_id=user_handle,
             user_display_name=display_name or username,
-            attestation=AttestationConveyancePreference.NONE,
+            attestation=AttestationConveyancePreference.DIRECT
+            if attestation_pref == "direct"
+            else AttestationConveyancePreference.NONE,
             authenticator_selection=AuthenticatorSelectionCriteria(
                 resident_key=ResidentKeyRequirement.PREFERRED,
                 user_verification=UserVerificationRequirement.PREFERRED,
@@ -114,6 +119,7 @@ def create_app() -> Flask:
             "username": username,
             "display_name": display_name or username,
             "role": role,
+            "attestation": attestation_pref,
             "handle": bytes_to_base64url(user_handle),
         }
         return Response(options_to_json(options), mimetype="application/json")
@@ -136,6 +142,16 @@ def create_app() -> Flask:
             )
         except Exception as exc:  # noqa: BLE001 - surface to client in demo
             return jsonify({"error": f"verification failed: {exc}"}), 400
+
+        expected_attestation = (pending or {}).get("attestation", "direct")
+        if expected_attestation == "direct" and str(verified.fmt).lower() == "none":
+            session.pop("reg_challenge", None)
+            session.pop("reg_user", None)
+            return jsonify({
+                "error": "attestation required: authenticator returned none; register a "
+                         "FIDO2 device that supports attestation, or use attestation=none "
+                         "for software keys"
+            }), 400
 
         user = db.get_user_by_username(pending["username"])
         if not user:
