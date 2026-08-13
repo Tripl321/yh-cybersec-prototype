@@ -14,6 +14,10 @@
       <option value="cub">cub — field node</option>
       <option value="mama_bear">mama_bear — admin / gateway</option>
     </select>
+    <label style="display:flex;gap:.5rem;align-items:center">
+      <input type="checkbox" id="attestation" checked>
+      Kräv attestation (secure by design)
+    </label>
     <button type="submit">Begin registration</button>
   </form>
 </div>
@@ -26,8 +30,9 @@ async function doRegister(e){
   const username = document.getElementById('username').value.trim();
   const display_name = document.getElementById('display_name').value.trim();
   const role = document.getElementById('role').value;
+  const attestation = document.getElementById('attestation').checked ? 'direct' : 'none';
   const begin = await fetch('/register/begin', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({username, display_name, role})});
+    body: JSON.stringify({username, display_name, role, attestation})});
   if(!begin.ok){ msg.className='msg err'; msg.textContent=(await begin.json()).error; return; }
   const options = await begin.json();
   options.user.id = b64url_decode(options.user.id);
@@ -49,7 +54,7 @@ async function doRegister(e){
   if(!complete.ok){ msg.className='msg err'; msg.textContent=out.error; return; }
   msg.className='msg ok';
   msg.innerHTML = '✓ Nyckel registrerad och verifierad för <strong>'+out.username+'</strong> ('+out.role+')<br>'+
-    '<small>credential: '+out.credential_id.slice(0,20)+'… · '+out.device_type+(out.backed_up?' · backed-up':'')+'</small>';
+    '<small>credential: '+out.credential_id.slice(0,20)+'… · '+out.device_type+(out.backed_up?' · backed-up':'')+' · fmt='+out.fmt+'</small>';
   setTimeout(()=>location.href='{{ url_for("dashboard") }}', 1500);
 }
 </script>

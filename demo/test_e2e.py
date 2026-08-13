@@ -23,11 +23,11 @@ def client(monkeypatch):
     return app.test_client()
 
 
-def _register(client, auth, username, role):
+def _register(client, auth, username, role, attestation="none"):
     h = {"Host": "localhost:8000"}
     r = client.post(
         "/register/begin",
-        json={"username": username, "display_name": username, "role": role},
+        json={"username": username, "display_name": username, "role": role, "attestation": attestation},
         headers=h,
     )
     assert r.status_code == 200, r.get_data(as_text=True)
@@ -35,6 +35,23 @@ def _register(client, auth, username, role):
     r = client.post("/register/complete", json=body, headers=h)
     assert r.status_code == 200, r.get_data(as_text=True)
     return r.get_json()
+
+
+def test_attestation_enforced_when_direct(client):
+    from soft_auth import SoftAuthenticator
+
+    auth = SoftAuthenticator()
+    h = {"Host": "localhost:8000"}
+    r = client.post(
+        "/register/begin",
+        json={"username": "soft", "display_name": "soft", "role": "cub", "attestation": "direct"},
+        headers=h,
+    )
+    assert r.status_code == 200
+    body = auth.register(r.get_json())
+    r = client.post("/register/complete", json=body, headers=h)
+    assert r.status_code == 400, r.get_data(as_text=True)
+    assert "attestation required" in r.get_json()["error"]
 
 
 def _login(client, auth, username):
