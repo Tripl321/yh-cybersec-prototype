@@ -50,9 +50,10 @@ saknas i nuläget i prototypen.
   (Schechter et al., "Emperor's New Security Indicators") → använd helst egna konton/risker
   snarare än roll-spel där det går.
 
-## Öppna beslut (grilling — ticket #18)
-- [ ] **Metodmix:** SUS + think-aloud + jämförelse mot baseline (rekommenderat) /
-      enbart SUS / inkl. phishing-scenario / formell studie?
-- [ ] **Deltagare:** 5–10 klasskamrater / pilot 1–2 / riktiga OT-operatörer (etik)?
-- [ ] **Ingår phishing-scenario?**
-- [ ] **Behövs etikprövning (IRB)?**
+## Beslut (grilling — ticket #18, 2026-08-14)
+- **Metodmix:** SUS + think-aloud + task success, jämfört mot **baseline** (fysisk nyckel + papperslogg). Phishing-scenario ingår **ej** i piloten.
+- **Deltagare:** Pilot **1–2 personer** (think-aloud) — lägsta tröskel för att komma igång.
+- **Etik:** Ingen IRB för pilot omfång 1–2, men dokumentera muntligt + skriftligt samtycke
+  och anonymisering.
+- **Nästa steg:** genomför pilot, samla SUS + think-aloud-transkription + baseline-jämförelse,
+  och skriv in resultatet här.
