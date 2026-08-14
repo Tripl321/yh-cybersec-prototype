@@ -48,12 +48,32 @@ vidare arbete. RP2350-brädorna har ännu ingen tilldelad roll i prototypen.
   `RESIDENT_KEY=PREFERRED`).
 - **Fysisk inkapsling** (wood/fanér per NOTES): ej gjord.
 
+## Fysisk inkapsling — kylning (planerad)
+Om fodralet (wood/fanér) blir tätt kan en 40 mm-fläkt ge luftflöde. Vald fläkt:
+**Noctua NF-A4x10 FLX** (12 V, 3-pin, 0,6 W / 0,05 A max). Den drivs **inte**
+direkt från UNO Q (5 V logik, klarar inte 12 V) utan via en **logic-level
+N-kanal-MOSFET** — bekräftad lämplig typ: **30N06L** (60 V / 30 A, logic-level;
+t.ex. FQP30N06L / NTP30N06L; batchnummer som `1G01AA FOP` ignoreras).
+
+**Koppling (low-side switch):**
+- 12 V+ → fläkt röd (+)
+- fläkt svart (−) → MOSFET **Drain**
+- MOSFET **Source** → gemensam GND (12 V− **och** UNO GND)
+- UNO GPIO → 150 Ω → MOSFET **Gate** (TO-220: pin 1=Gate, 2=Drain, 3=Source)
+- valfritt 10 kΩ pull-down Gate→GND (default AV)
+- 1N4007 flyback-diod: katod → 12 V+, anod → Drain (skydd mot fläktens spole)
+- fläktens 3:e tråd (tach) → UNO-input m. pull-up för RPM (valfritt)
+
+**Styrning (Arduino):** `digitalWrite(pin, HIGH)` = PÅ, `LOW` = AV.
+Varvtalsstyrning kräver 4-pin PWM-fläkt; med 3-pin funkar på/av + ungefärlig
+PWM på MOSFET-gate.
+
 ## Blockeringar
 - **Hårdvara ej monterad** — komponenter (RP2350, LoRa, e-ink, LiPo, UNO Q)
   är inköpta men inte elektriskt anslutna/monterade. Detta blockerar:
   - Firmware-arbete för Mama Bear/Cub-noder (RP2350).
   - Radio/heartbeat-arbete (LoRa SX1262) — se tickets #4 / #15.
-- **Rollfördelning (korrigerad):** RP2350 (Pico 2 W) = Mama bear / PicoFIDO (per CONTEXT.md); ESP32+pico-fido2 = testad FIDO-enhet (avvikelse). Cub-agenten är mjukvara som hostas på **Arduino UNO Q eller Fedora** — den stacken är ej spikad (se Cub-agent-ticket).
+- **Rollfördelning (korrigerad):** RP2350 (Pico 2 W) = Mama bear / PicoFIDO (per CONTEXT.md); ESP32+pico-fido2 = testad FIDO-enhet (avvikelse). Cub-agenten är mjukvara som hostas på **Fedora (Python)** (ADR 0004, PR #29); UNO Q förkastad för prototypen.
 
 ## Nästa hårdvarusteg
 1. Montera/anslut komponenterna (öppna blockeraren ovan).
