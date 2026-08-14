@@ -53,7 +53,7 @@ vidare arbete. RP2350-brädorna har ännu ingen tilldelad roll i prototypen.
   är inköpta men inte elektriskt anslutna/monterade. Detta blockerar:
   - Firmware-arbete för Mama Bear/Cub-noder (RP2350).
   - Radio/heartbeat-arbete (LoRa SX1262) — se tickets #4 / #15.
-- Rollfördelning RP2350 vs ESP32 är ej fastställd (berör #19).
+- **Rollfördelning (korrigerad):** RP2350 (Pico 2 W) = Mama bear / PicoFIDO (per CONTEXT.md); ESP32+pico-fido2 = testad FIDO-enhet (avvikelse). Cub-agenten är mjukvara som hostas på **Arduino UNO Q eller Fedora** — den stacken är ej spikad (se Cub-agent-ticket).
 
 ## Nästa hårdvarusteg
 1. Montera/anslut komponenterna (öppna blockeraren ovan).
