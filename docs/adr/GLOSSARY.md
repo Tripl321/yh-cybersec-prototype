@@ -7,7 +7,7 @@ Ubiquitous language för SHALLOT-prototypen. Kombinerar OT-domänen (från `CONT
 - **SHALLOT** — Proximity-baserat säkerhetssystem för OT-åtkomstkontroll. I komponentledet även benämning på själva ID-brickan (FIDO2-hårdvaran).
 - **Smart ID-bricka / PicoFIDO** — Secure-by-design ID-bricka; FIDO2-passkey (hårdvara: RP2350 Pico 2 W, i praktiken även ESP32 med `pico-fido2`-firmware).
 - **Mama Bear** — Admin/gateway-åtkomstpunkt (separat PicoFIDO). Roll: `mama_bear`.
-- **Cub** — Agent (mjukvara) som hostas på Arduino UNO Q eller Fedora. Roll: `cub` (WebAuthn-user).
+- **Cub** — LLM-baserad AI-agent (Pydantic AI + lokal Ollama) som hostas på Fedora. Hanterar GRC, SIEM-auditering, loggkontroll och larm inom SHALLOT. Roll: `cub` (WebAuthn-user).
 - **Heartbeat** — Krypterad proximity-verifiering mellan ID-bricka och fältnod.
 - **Transit** — SHALLOT:s krypterade heartbeat-protokoll (ännu ej designerat, se karta #4/#15).
 - **Baseline** — Fysisk nyckel + pappersloggbok (analog åtkomst, fallback).
@@ -23,10 +23,20 @@ Ubiquitous language för SHALLOT-prototypen. Kombinerar OT-domänen (från `CONT
 - **Authentication / Assertion** — `navigator.credentials.get` → `verify_authentication_response`; loggar in.
 - **User Verification (UV)** — Autenticatorn verifierar användaren (PIN/biometri). Demo kräver inte UV.
 
+## AI-agent / stack (Cub)
+
+- **Pydantic AI** — Lean, typ-säker agent-ramverk (Python); modell-agnostiskt.
+- **Ollama** — Lokal LLM-runtime (Fedora); kör modeller utan egress/API-nyckel.
+- **Model-agnostic** — Provider-abstraktion; byter Ollama ↔ moln utan kodändring.
+- **Tool-allowlist** — Explicit lista av verktyg modellen får anropa per kontext; begränsar blast radius.
+- **SOAR** — Security Orchestration, Automation and Response; Cub agerar SOAR-likt för larm inom SHALLOT.
+- **Prompt-injection** — Attack där olitlig text (t.ex. loggar) försöker styra agenten; motverkas genom data/instruktions-isolering.
+- **Sandbox (Podman)** — Rootless container, drop caps, read-only rootfs, seccomp, nätverk låst till provider.
+
 ## Mappning OT → WebAuthn
 
 | SHALLOT / Smart ID-bricka | FIDO2-hårdvaran (autenticatorn) — motsvarar credentialt som lagras för user `cub` |
 | --- | --- |
 | Mama bear | user med roll `mama_bear` + credentials (admin/gateway) |
-| Cub (agent) | user med roll `cub` + credential; agenten hostas på UNO Q eller Fedora |
+| Cub (agent) | user med roll `cub` + credential; LLM-agent (Pydantic AI + lokal Ollama) hostad på Fedora |
 | Proximity-åtkomst | (framtida) heartbeat/Transit mellan ID-bricka och fältnod styr auktorisation |
