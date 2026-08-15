@@ -34,12 +34,32 @@ specificerar *hur* Cub-agenten hanterar inferens så att känslig data inte läm
    bevisar att routern blockerar även under injektion.
 7. **Human-in-the-loop** — agent *föreslår*, människa godkänner konsekvens (AI Act art. 14).
 8. **Provenans-logg** — varje routingbeslut + hash av skickat + modellversion (AI Act art. 12).
+9. **Agentiskt minne + RAG (lokalt)** — se egen sektion nedan.
 
 ## Integritetsmekanism: kryptering vs hash
 Deterministisk lokal kryptering (FPE/AES-SIV) rekommenderas framför ren hash: reversibel via
 lokal nyckel utan separat lagrad map, och läcker (som hash) endast *likhet*, inte värde. Nyckel
 stannar lokalt. För cloud-egress generaliseras ändå ovanpå; kryptering tar identifierare lokalt,
 generaliserling tar semantik.
+
+## Agentiskt minne + RAG (lokalt)
+
+Cub-agenten berikas med lokal kunskap och långtidsminne utan att röra egress-principen.
+
+- **RAG:** en lokal vector store (på Podman-volym, krypterad i vila) över korpusen — ramverksdokument
+  (NIST CSF/800-53, MITRE ATT&CK, CIS v8), SHALLOT-specar/ADR:er, runbooks, historiska audit-fynd och
+  asset-inventering. Inbäddningar körs lokalt (t.ex. `nomic-embed-text` i Ollama). Agenten hämtar
+  grundande kontext i stället för att lita på modellens parametriska kunskap — höjer GRC/SIEM-kvaliteten
+  och håller allt lokalt (Tier 0/1).
+- **Agentiskt minne:** episodiskt (tidigare larm/triage + operatörens HITL-utfall → lär sig
+  falsk-positiv-mönster), semantiskt (entitets-registret med surrogat-mappning) och procedurt
+  (justerade runbooks). Persisteras lokalt med TTL/purge-policy (GDPR-dataminimering).
+- **Säkerhetsintegrering:** (1) båda lagren är lokala — noll egress; (2) Ingress Scrubber gäller även
+  *skrivningar* till minnet/RAG, så entiteter surrogate-kodas och den persistenta lagringen inte blir
+  klartext-läcka; (3) Model Routern gäller hämtad kontext — eskaleras resonemanget till moln måste
+  hämtad känslig kontext generaliseras/scrubbas som loggar; (4) läs/skriv loggas i provenans-loggen;
+  minnet är högvärdigt mål → krypterat i vila, åtkomststyrt, remapping-tabell exkluderas från
+  provenans-loggen.
 
 ## Labb vs drift
 Labb = syntetisk data → konfidentialitetsrisk N/A, men mekanismen är **deployment-klar och
