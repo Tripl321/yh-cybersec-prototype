@@ -57,3 +57,51 @@ saknas i nuläget i prototypen.
   och anonymisering.
 - **Nästa steg:** genomför pilot, samla SUS + think-aloud-transkription + baseline-jämförelse,
   och skriv in resultatet här.
+
+---
+
+## Genomförd pilot (2026-08-15) — LLM-driven simulering (ticket #45)
+
+> **Metod:** Istället för rekrytering av deltagare (YH-kontext) kördes en
+> **LLM-baserad heuristisk simulering**: en syntetisk användare ("Sven", 45,
+> drift-tekniker, van vid fysisk nyckel + papperslogg, begränsad IT-vana) stegade
+> genom demo-flödet (registrera passkey → logga in → dashboard) med think-aloud
+> och besvarade SUS. Artifakt: `cub/simulate_ux.py`. Kör:
+> `python -m cub.simulate_ux`.
+
+### Resultat — think-aloud (utdrag)
+- **start:** "…jag antar att jag börjar med att registrera."
+- **register:** "…'Role' vet jag inte vad det betyder. Jag lämnar kryssrutan ifylld."
+- **register_prompt:** "…en fråga om 'Authenticator' — jag blev förvirrad, men tog på brickan och det gick fram."
+- **login_prompt:** "Samma 'Authenticator'-fråga igen — nu förstod jag att jag ska ta på brickan."
+
+### Resultat — SUS
+
+| Fråga | Poäng | | Fråga | Poäng |
+|:---:|:---:|:---:|:---:|:---:|
+| 1 | 4 | | 6 | 2 |
+| 2 | 2 | | 7 | 4 |
+| 3 | 4 | | 8 | 1 |
+| 4 | 3 | | 9 | 4 |
+| 5 | 4 | | 10 | 3 |
+
+**SUS total: 72/100** (≥ 68 = acceptabelt golv, Ruoti et al. SOUPS 2016; Reese et al. SOUPS 2019).
+
+### Observationer / teman
+- Engelska formulär-ord (*Username / Display name / Role*) uppfattas som otydliga av
+  en svenskspråkig OT-tekniker med begränsad IT-vana.
+- WebAuthn-authenticator-frågan ("ta på brickan") förvirrade vid första tillfället
+  men förstods vid andra — tydlig onboarding-vinst.
+- Flödet upplevs som kort (3 steg) och genomförbart utan blockerande fel.
+
+### Begränsningar (viktigt att deklarera)
+- Simulering, **inte** ett riktigt användartest: SUS-poängen härstammar från en
+  scriptad/LLM-baserad persona, ej från mänskliga deltagare.
+- Kördes i **fallback-läge** (ingen lokal Ollama-modell installerad vid tillfället);
+  när Ollama körs ger `python -m cub.simulate_ux` samma metod med en levande modell.
+- Ger en *första kvalitativ signal*, inte statistisk signifikans.
+
+### Nästa steg (frivilligt)
+- Installera Ollama + `llama3.2` och köra `python -m cub.simulate_ux` på nytt för
+  en levande modell.
+- Om tid finns: 1 riktig deltagare för att korsvalidera simuleringen.
