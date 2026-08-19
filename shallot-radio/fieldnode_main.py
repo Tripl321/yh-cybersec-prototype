@@ -14,6 +14,10 @@ from hardware_pins import FIELDNODE_PINS
 from shallot_radio import ShallotRadio
 from relay_controller import RelayController
 from state_machine import FieldNodeFSM
+from epoch import verify_hmac
+from storage import Storage
+from provisioning import parse_command, handle_enroll, handle_revoke
+from audit import AuditLog
 
 # ── Hardware init ──────────────────────────────────────────────
 
@@ -24,33 +28,50 @@ irq = digitalio.DigitalInOut(board.GP20)
 busy = digitalio.DigitalInOut(board.GP21)
 
 radio = ShallotRadio(spi, cs, rst, irq, busy)
-relay = RelayController(board.GP14)  # relay on GP14, adjust as needed
+relay = RelayController(board.GP14)
 
-# ── Enrolled keys (populated by provisioning) ──────────────────
+# ── Storage ────────────────────────────────────────────────────
 
-KEYS = {}
+store = Storage("/flash")
+audit = AuditLog("/flash")
 
+# ── Provisioning GPIO ──────────────────────────────────────────
+
+provision_pin = digitalio.DigitalInOut(board.GP0)
+provision_pin.direction = digitalio.Direction.INPUT
+provision_pin.pull = digitalio.Pull.UP
+
+# ── Serial for provisioning ────────────────────────────────────
+
+import usb_cdc
+serial = usb_cdc.data
+
+# ── Callbacks ──────────────────────────────────────────────────
 
 def get_keys():
-    return KEYS
-
+    """Load enrolled keys from flash."""
+    return store.load_enrolled()
 
 def get_day():
-    """Stub: replace with real day counter (epoch-based)."""
-    # TODO: read from RTC or Mama Bear sync
-    return 1
-
+    """Load current day from epoch data."""
+    epoch = store.load_epoch()
+    return epoch.get("day", 0)
 
 def verify_auth(auth_data, keys):
-    """Stub: replace with real HMAC verification from lock/main.py."""
+    """Verify HMAC signature against enrolled key."""
     badge_id = auth_data["badge_id"]
     if badge_id not in keys:
         return False
-    # TODO: verify signature against enrolled public key
-    return True
-
+    key = keys[badge_id]
+    secret = bytes.fromhex(key["epoch_secret"])
+    msg = auth_data["nonce"].to_bytes(4, "big") + auth_data["day"].to_bytes(4, "big")
+    return verify_hmac(secret, msg, auth_data["signature"])
 
 # ── State machine ──────────────────────────────────────────────
+
+def on_access_decision(badge_id, decision):
+    """Log access decision."""
+    audit.log_access(badge_id, "FN01", decision, 0, int(time.monotonic() * 1000))
 
 fsm = FieldNodeFSM(
     radio=radio,
@@ -64,4 +85,17 @@ fsm = FieldNodeFSM(
 # ── Main loop ──────────────────────────────────────────────────
 
 while True:
-    fsm.tick()
+    # Check provisioning mode
+    if not provision_pin.value:  # LOW = provisioning mode
+        line = serial.readline()
+        if line:
+            cmd = parse_command(line.decode())
+            if cmd:
+                if cmd["cmd"] == "ENROLL":
+                    result = handle_enroll(cmd, store)
+                elif cmd["cmd"] == "REVOKE":
+                    result = handle_revoke(cmd, store)
+                serial.write(f"{result}\n".encode())
+    else:
+        # Normal operation
+        fsm.tick()

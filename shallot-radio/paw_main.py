@@ -12,6 +12,10 @@ import digitalio
 from constants import HEARTBEAT_TIMEOUT_MS, RSSI_THRESHOLD_DBM
 from shallot_radio import ShallotRadio
 from state_machine import PAWFSM
+from storage import Storage
+from fido_bridge import FidoBridge
+from display import Display
+from button import Button
 
 # ── Hardware init ──────────────────────────────────────────────
 
@@ -23,53 +27,62 @@ busy = digitalio.DigitalInOut(board.D10)
 
 radio = ShallotRadio(spi, cs, rst, irq, busy)
 
-# ── Button (active-low, use internal pull-up) ──────────────────
+# ── Storage ────────────────────────────────────────────────────
 
-button = digitalio.DigitalInOut(board.D12)
-button.direction = digitalio.Direction.INPUT
-button.pull = digitalio.Pull.UP
+store = Storage("/flash")
 
-_last_button = True
+# ── FIDO Key bridge ────────────────────────────────────────────
 
+fido = FidoBridge()
 
-def check_button():
-    """Poll button. Returns True on press edge (not held)."""
-    global _last_button
-    current = button.value
-    pressed = _last_button and not current
-    _last_button = current
-    return pressed
+# ── Display ────────────────────────────────────────────────────
 
+display = Display()
 
-# ── FIDO signing stub ─────────────────────────────────────────
+# ── Button ─────────────────────────────────────────────────────
+
+paw_state = None  # Will be set after PAWFSM init
+
+def on_button_press():
+    """Called by Button handler on valid press."""
+    if paw_state:
+        paw_state.on_button_press()
+
+button = Button(callback=on_button_press)
+
+# ── Callbacks ──────────────────────────────────────────────────
 
 def sign_nonce(nonce: int, day: int) -> bytes:
-    """Stub: replace with PicoFIDO HMAC signing over USB-serial.
-
-    Signs: badge_id + nonce + day (12 bytes).
-    Returns 32-byte HMAC-SHA256.
-    """
-    # TODO: send (nonce, day) to FIDO Key, receive 32-byte HMAC-SHA256
-    return b"\x00" * 32
-
+    """Sign (nonce, day) via FIDO Key over USB-serial."""
+    return fido.sign(nonce, day)
 
 def get_day() -> int:
-    """Stub: replace with real day counter (epoch-based)."""
-    # TODO: read from RTC or Mama Bear sync
-    return 1
-
-
-# ── E-ink stub ─────────────────────────────────────────────────
+    """Load current day from epoch data."""
+    epoch = store.load_epoch()
+    return epoch.get("day", 0)
 
 def on_state_change(new_state):
-    """Stub: update E-ink display on state transition."""
-    # TODO: drive Waveshare e-Paper
-    pass
-
+    """Update E-ink display on state transition."""
+    state_names = {
+        0: "OFF_SITE",
+        1: "ON_SITE",
+        2: "REQUESTING",
+        3: "AUTH_SENT",
+        4: "GRANTED",
+    }
+    name = state_names.get(new_state, "UNKNOWN")
+    if name == "OFF_SITE":
+        display.show_off_site()
+    elif name == "ON_SITE":
+        display.show_on_site(b"FN01")  # TODO: get from beacon
+    elif name == "GRANTED":
+        display.show_granted()
+    elif name in ("REQUESTING", "AUTH_SENT"):
+        pass  # No display change during request
 
 # ── State machine ──────────────────────────────────────────────
 
-paw = PAWFSM(
+paw_state = PAWFSM(
     radio=radio,
     badge_id=b"PAW1",
     sign_fn=sign_nonce,
@@ -80,6 +93,5 @@ paw = PAWFSM(
 # ── Main loop ──────────────────────────────────────────────────
 
 while True:
-    if check_button():
-        paw.on_button_press()
-    paw.tick()
+    button.check()
+    paw_state.tick()
