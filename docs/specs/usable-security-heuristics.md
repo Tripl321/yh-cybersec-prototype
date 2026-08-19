@@ -33,7 +33,7 @@ Each solution (Baseline vs. SHALLOT) is evaluated against these 8 criteria:
 | **H3** | **Minimal User Burden** | Session maintenance requires zero repetitive manual re-authentications or complex password memorization. | Sasse (2001), NIST SP 800-63B §10.2 |
 | **H4** | **Explicit Intent & Authorization** | Initiating access requires explicit, unambiguous user intent (e.g. FIDO2 button tap) confirming human presence. | FIDO Alliance UX, Ka-Ping Yee (2002) |
 | **H5** | **Unambiguous Failure States** | System errors, out-of-range events, and access rejections are self-explanatory with actionable guidance. | NIST SP 800-63B §10.1 |
-| **H6** | **Immediate Lockout & Revocation** | System automatically revokes access / locks terminal upon boundary or proximity violation (< 3 sec). | NIST SP 800-53 IA-3(1), CIS Control 6 |
+| **H6** | **Immediate Lockout & Revocation** | System automatically revokes access / locks terminal upon boundary or presence violation (< 3 sec). | NIST SP 800-53 IA-3(1), CIS Control 6 |
 | **H7** | **Role & Privilege Isolation** | Standard operator and administrator roles are physically/logically separated to prevent accidental misuse. | NIST SP 800-53 IA-2(1)/(2) |
 | **H8** | **Effortless Auditability** | Audit logs and traceability are generated automatically with zero administrative burden on the operator. | NIST CSF PR.AC-1, CIS Control 6 |
 

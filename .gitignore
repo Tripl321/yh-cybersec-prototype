@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# SHALLOT demo sqlite store
+demo/shallot.db
+
+# Projektplan (ej i repo)
+docs/specs/project-plan.md

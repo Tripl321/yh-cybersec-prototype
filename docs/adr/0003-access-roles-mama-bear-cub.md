@@ -7,4 +7,4 @@ Tre begrepp skiljs åt i SHALLOT:
 
 I `demo/`-servern modelleras `mama_bear` och `cub` som WebAuthn-users; credentialt som lagras är SHALLOT-ID-brickan (FIDO2-nyckeln). Valet är en gränsbeslut (scope) som är svårt att byta sedan UI och datamodell byggts kring det.
 
-**Consequences:** Vilken stack Cub-agenten kör — Arduino UNO Q (C/C++) vs Fedora (Python) — är **inte spikad** (se wayfinder-ticket om Cub-agent-stack). Proximity-verifieringen (heartbeat/Transit) är ännu inte kopplad till auktorisationsbeslutet (#4 / #15).
+**Consequences:** Vilken stack Cub-agenten kör — Arduino UNO Q (C/C++) vs Fedora (Python) — är **inte spikad** (se wayfinder-ticket om Cub-agent-stack). Presence-verifieringen (heartbeat/Transit, kryptoautentiserad närvaro — inte avståndsmätning) är ännu inte kopplad till auktorisationsbeslutet (#4 / #15).

@@ -29,7 +29,7 @@ PERSONA = (
 
 SCREENS = {
     "start": (
-        "Startsida 'SHALLOT auth server': 'Proximity-based OT access control via "
+        "Startsida 'SHALLOT auth server': 'Presence-based OT access control via "
         "FIDO2 / WebAuthn passkeys.' Tva knappar: 'Register a passkey' och 'Login'. "
         "Liten text: 'Roles: mama_bear admin/gateway access point · cub field node / ID-bricka'."
     ),
@@ -53,7 +53,7 @@ SCREENS = {
     ),
     "dashboard": (
         "Dashboard: 'Access granted'. 'Welcome, <anvandarnamn>.' Roll: cub. "
-        "'You hold a field-node credential (ID-bricka). Proximity verification "
+        "'You hold a field-node credential (ID-bricka). Presence verification "
         "handled by Mama Bear.' Lista 'Registered credentials': en rad med "
         "'✓ verifierad <credential_id>…', fmt, sign#1. Knapp 'Add another passkey'."
     ),

@@ -1,23 +1,30 @@
-"""Prototype: GRC / SIEM-logg / larm-verktyg for SHALLOT (ADR 0006 / #44).
+"""GRC / SIEM-logg / larm-verktyg for SHALLOT (ADR 0006 / ADR 0007 / #44).
 
-Agentens verktyg ar tunna wrappers kring befintlig OSS:
-- emission/instrumentering: OpenTelemetry -> lokal collector (localhost)
-- lagring/fraga: lokal SIEM (Wazuh / Elastic / Loki+Promtail)
+Agentens verktyg ar tunna wrappers kring Wazuh SIEM:
+- emission/instrumentering: Wazuh API (POST /events)
+- lagring/fraga: Wazuh indexer (Elasticsearch-compatible)
 - detektion: Sigma-regler; ramverksmappning NIST CSF / SP 800-53 / MITRE / CIS
-Prototypen anvander en lokal fil-sink som stallforetradare for OSS-stacken.
 
-ROUGH PROTOTYPE -- reaktionsunderlag, ej produktionskod.
+Fallback: lokal JSONL-fil nar Wazuh API ej ar tillgangligt (offline/labbet).
 """
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+import requests
 
-SINK_PATH = Path(".cub/grc_events.jsonl")  # lokal sink (OTEL -> localhost SIEM)
+
+SINK_PATH = Path(".cub/grc_events.jsonl")
+
+# Wazuh API config (ADR 0007)
+WAZUH_API_URL = os.environ.get("WAZUH_API_URL", "")  # e.g. https://localhost:55000
+WAZUH_API_TOKEN = os.environ.get("WAZUH_API_TOKEN", "")  # Bearer token
+WAZUH_VERIFY_SSL = os.environ.get("WAZUH_VERIFY_SSL", "0") == "1"  # self-signed certs
 
 
 @dataclass
@@ -34,17 +41,85 @@ class GrcEvent:
 
 
 class GrcSink:
-    """Lokal sink; i produktion OTEL-exporter till lokal SIEM-collector."""
+    """Wazuh-backed SIEM sink with JSONL fallback.
+
+    When WAZUH_API_URL is set, events are sent to Wazuh API.
+    Otherwise, falls back to local JSONL file (offline/labbet).
+    """
 
     def __init__(self, path: Path = SINK_PATH) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._wazuh_available = bool(WAZUH_API_URL and WAZUH_API_TOKEN)
+        self._session: requests.Session | None = None
+
+        if self._wazuh_available:
+            self._session = requests.Session()
+            self._session.headers.update({
+                "Authorization": f"Bearer {WAZUH_API_TOKEN}",
+                "Content-Type": "application/json",
+            })
 
     def append(self, event: GrcEvent) -> None:
+        """Send event to Wazuh or fallback to JSONL."""
+        if self._wazuh_available and self._session is not None:
+            try:
+                payload = {
+                    "event": asdict(event),
+                    "rule": {
+                        "groups": ["shallot", event.sensitivity.lower()],
+                        "level": self._severity_to_level(event.sensitivity),
+                    },
+                    "agent": {
+                        "id": "cub-agent",
+                        "name": "shallot-cub",
+                    },
+                    "location": f"cub.{event.action}",
+                }
+                resp = self._session.post(
+                    f"{WAZUH_API_URL}/events",
+                    json=payload,
+                    verify=WAZUH_VERIFY_SSL,
+                    timeout=5,
+                )
+                resp.raise_for_status()
+                return
+            except Exception as exc:
+                print(f"[cub] Wazuh API append failed: {exc}; falling back to JSONL")
+
+        # Fallback: local JSONL
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(asdict(event)) + "\n")
 
     def query(self, *, tag: str | None = None, actor: str | None = None) -> list[dict]:
+        """Query events from Wazuh or fallback to JSONL."""
+        if self._wazuh_available and self._session is not None:
+            try:
+                query_body: dict = {"query": {"bool": {"must": []}}}
+                if tag:
+                    query_body["query"]["bool"]["must"].append(
+                        {"match": {"event.framework_tags": tag}}
+                    )
+                if actor:
+                    query_body["query"]["bool"]["must"].append(
+                        {"term": {"event.actor": actor}}
+                    )
+                if not query_body["query"]["bool"]["must"]:
+                    query_body = {"query": {"match_all": {}}}
+
+                resp = self._session.post(
+                    f"{WAZUH_API_URL}/events/_search",
+                    json=query_body,
+                    verify=WAZUH_VERIFY_SSL,
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                hits = resp.json().get("hits", {}).get("hits", [])
+                return [h.get("_source", {}).get("event", {}) for h in hits]
+            except Exception as exc:
+                print(f"[cub] Wazuh API query failed: {exc}; falling back to JSONL")
+
+        # Fallback: local JSONL
         out: list[dict] = []
         if not self.path.exists():
             return out
@@ -58,6 +133,31 @@ class GrcSink:
                 continue
             out.append(ev)
         return out
+
+    def healthcheck(self) -> dict:
+        """Check Wazuh API connectivity."""
+        if not self._wazuh_available or self._session is None:
+            return {"status": "offline", "fallback": "jsonl"}
+        try:
+            resp = self._session.get(
+                f"{WAZUH_API_URL}/",
+                verify=WAZUH_VERIFY_SSL,
+                timeout=5,
+            )
+            resp.raise_for_status()
+            return {"status": "online", "wazuh_version": resp.json().get("api_version", "unknown")}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc), "fallback": "jsonl"}
+
+    @staticmethod
+    def _severity_to_level(sensitivity: str) -> int:
+        """Map SHALLOT sensitivity to Wazuh rule level (0-15)."""
+        return {
+            "CONFIDENTIAL": 12,
+            "RESTRICTED": 15,
+            "INTERNAL": 5,
+            "PUBLIC": 2,
+        }.get(sensitivity, 5)
 
 
 # --- Agent-verktyg (tunna wrappers kring OSS) ---
@@ -139,6 +239,7 @@ TOOL_METADATA: dict[str, dict] = {
 
 def demo() -> None:
     s = GrcSink()
+    print("healthcheck:", s.healthcheck())
     emit_grc_event(
         "register_credential",
         framework_tags={"sp800_53": ["AC-2"], "nist_csf": ["PR.AC"]},

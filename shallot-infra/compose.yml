@@ -1,0 +1,183 @@
+# SHALLOT Infrastructure — Podman Compose
+# ADR 0005: rootless Podman; ADR 0007: OSS stack
+#
+# Usage:
+#   podman compose up -d          # start all services
+#   podman compose logs -f cub    # follow cub-agent logs
+#   podman compose down           # stop all services
+#
+# Requires: podman >= 4.0, podman-compose or podman compose
+# All containers run rootless with drop caps, read-only rootfs, seccomp.
+
+services:
+  # --- Cub Agent (LLM security agent) ---
+  cub:
+    build:
+      context: ../cub
+      dockerfile: Containerfile
+    container_name: shallot-cub
+    restart: unless-stopped
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CUB_CLOUD_ENABLED=0
+      - WAZUH_API_URL=http://wazuh:55000
+      - WAZUH_API_TOKEN=${WAZUH_API_TOKEN:-}
+      - HANKO_API_URL=http://hanko:8000
+      - SUPERMEMORY_API_URL=http://supermemory:6767
+      - LATITUDE_API_KEY=${LATITUDE_API_KEY:-}
+      - LATITUDE_PROJECT_SLUG=shallot
+    networks:
+      - shallot-internal
+    depends_on:
+      - ollama
+      - wazuh
+      - hanko
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+    volumes:
+      - cub-data:/var/lib/cub
+      - cub-provenance:/var/lib/cub/provenance
+
+  # --- Ollama (local LLM inference) ---
+  ollama:
+    image: ollama/ollama:latest
+    container_name: shallot-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    networks:
+      - shallot-internal
+    volumes:
+      - ollama-data:/root/.ollama
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+
+  # --- Wazuh (SIEM) ---
+  wazuh:
+    image: wazuh/wazuh-manager:4.9.0
+    container_name: shallot-wazuh
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:55000:55000"
+      - "127.0.0.1:1514:1514/udp"
+      - "127.0.0.1:1515:1515"
+    environment:
+      - INDEXER_URL=http://wazuh-indexer:9200
+      - INDEXER_USER=admin
+      - INDEXER_PASSWORD=admin
+    networks:
+      - shallot-internal
+    volumes:
+      - wazuh-data:/var/ossec/data
+      - wazuh-etc:/var/ossec/etc
+      - wazuh-logs:/var/ossec/logs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # --- Wazuh Indexer (Elasticsearch-compatible) ---
+  wazuh-indexer:
+    image: wazuh/wazuh-indexer:4.9.0
+    container_name: shallot-wazuh-indexer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9200:9200"
+    environment:
+      - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - shallot-internal
+    volumes:
+      - wazuh-indexer-data:/usr/share/wazuh-indexer/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK
+
+  # --- Hanko (WebAuthn/FIDO2 RP) ---
+  hanko:
+    image: ghcr.io/teamhanko/hanko:latest
+    container_name: shallot-hanko
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8888:8888"
+    environment:
+      - HANKO_CONFIG=/etc/hanko/config.yaml
+    networks:
+      - shallot-internal
+    volumes:
+      - hanko-data:/var/lib/hanko
+      - ./config/hanko.yaml:/etc/hanko/config.yaml:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # --- Supermemory (persistent memory + RAG) ---
+  supermemory:
+    image: supermemory/supermemory:latest
+    container_name: shallot-supermemory
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6767:6767"
+    networks:
+      - shallot-internal
+    volumes:
+      - supermemory-data:/var/lib/supermemory
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # --- Latitude (LLM observability) ---
+  latitude:
+    image: middayai/latitude:latest
+    container_name: shallot-latitude
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - LATITUDE_API_KEY=${LATITUDE_API_KEY:-}
+      - DATABASE_URL=sqlite:///var/lib/latitude/latitude.db
+    networks:
+      - shallot-internal
+    volumes:
+      - latitude-data:/var/lib/latitude
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+networks:
+  shallot-internal:
+    driver: bridge
+    internal: true  # No external access; all egress denied by default
+
+volumes:
+  cub-data:
+  cub-provenance:
+  ollama-data:
+  wazuh-data:
+  wazuh-etc:
+  wazuh-logs:
+  wazuh-indexer-data:
+  hanko-data:
+  supermemory-data:
+  latitude-data:

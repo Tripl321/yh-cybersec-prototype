@@ -1,0 +1,33 @@
+# Hanko configuration for SHALLOT
+# ADR 0007: WebAuthn RP with FIDO2 support
+
+server:
+  port: 8000
+  public:
+    url: "http://localhost:8000"
+
+database:
+  driver: "sqlite"
+  sqlite:
+    database: "/var/lib/hanko/hanko.db"
+
+webauthn:
+  relying_party:
+    id: "shallot.local"
+    name: "SHALLOT"
+    origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+
+service:
+  name: "shallot-hanko"
+
+logger:
+  level: "info"
+
+passkey:
+  enabled: true
+  rp_id: "shallot.local"
+  rp_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"

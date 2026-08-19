@@ -1,10 +1,13 @@
 [project]
 name = "cub-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cub — SHALLOT LLM agent (Pydantic AI + local Ollama, sandboxed via Podman)"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic-ai>=1.0",
     "ollama>=0.4",
-    "logfire>=2.0",
+    "cryptography>=42.0",
+    "supermemory>=0.1",
+    "latitude-telemetry>=0.1",
+    "requests>=2.31",
 ]

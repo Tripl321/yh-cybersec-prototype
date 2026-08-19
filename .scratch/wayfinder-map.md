@@ -60,19 +60,22 @@ Två PicoFIDO-enheter med strikt separation — en för fältåtkomst, en för a
 5. **Pocock-flöde**: Fullt flöde från setup till code-review
 6. **PicoFIDO-arkitektur**: Två enheter, strikt separation. Pico #1 = fält-ID-bricka (IA-2(2)), Pico #2 = admin/mama bear (IA-2(1)). Båda RP2350.
 7. **Baseline**: Fysisk nyckel + pappersloggbok. Analog, 0 SEK, minimal scope. Attacker: nyckelkopiering, loggboks-förfalskning, ingen spårbarhet.
+8. **NIST SP 800-63B Usable Security Requirements**: 5 designkrav (REQ-UX-01 till REQ-UX-05) i [`docs/research/800-63b-usable-security.md`](file:///Users/johannes/Projects/Thesis%20Project/yh-cybersec-prototype/docs/research/800-63b-usable-security.md).
+9. **Usable Security Heuristics Framework**: 8-punkters Usable Security Matrix (Ka-Ping Yee + NIST SP 800-63B) med Nielsens 0–4 Severity Rating Scale i [`docs/specs/usable-security-heuristics.md`](file:///Users/johannes/Projects/Thesis%20Project/yh-cybersec-prototype/docs/specs/usable-security-heuristics.md).
+10. **MITRE ATT&CK T1078 & PicoFIDO Mitigations**: 3-lagers Defense-in-Depth modell + fullständig NIST SP 800-53 IA, NIST CSF 2.0 & CIS v8 mappning i [`docs/research/mitre-t1078-picofido.md`](file:///Users/johannes/Projects/Thesis%20Project/yh-cybersec-prototype/docs/research/mitre-t1078-picofido.md).
 
 ---
 
 ## Child Tickets
 
 - [x] Setup Pocock-skills för repo (Task)
-- [ ] #2 Research: NIST SP 800-63B usable security-principer
-- [ ] #3 Research: MITRE ATT&CK T1078 mitigeringar med PicoFIDO
+- [x] #2 Research: NIST SP 800-63B usable security-principer ✅ LÖST
+- [x] #3 Research: MITRE ATT&CK T1078 mitigeringar med PicoFIDO ✅ LÖST
 - [x] Baseline-lösning — ✅ LÖST (Fysisk nyckel + loggbok)
-- [ ] #4 Grilling: Usable security-heuristik-val (Blocked by #2)
-- [ ] #5 Grilling: Användartest-design (Blocked by #4)
-- [ ] #6 Grilling: Pen-test-scenarier (Blocked by #3)
+- [x] #4 Grilling: Usable security-heuristik-val ✅ LÖST
+- [ ] #5 Grilling: Användartest-design (Unblocked! Redo för T6)
+- [ ] #6 Grilling: Pen-test-scenarier (Unblocked! Redo för T7)
 - [ ] #7 Grilling: SHALLOT prototyp-omfattning och hårdvara (Blocked by #5, #6, #9)
 - [ ] #8 Grilling: Rapportstruktur för YH (Blocked by #5, #6)
 - [ ] #9 Research: SHALLOT hårdvaruarkitektur och kostnad
-- [ ] #10 Grilling: PicoFIDO-integration med SHALLOT (Blocked by #3, #8)
+- [ ] #10 Grilling: PicoFIDO-integration med SHALLOT (Blocked by #8)

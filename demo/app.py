@@ -1,7 +1,7 @@
 """SHALLOT WebAuthn auth server (Mama Bear / Cub).
 
 A minimal Flask relying party that demonstrates FIDO2/WebAuthn-based
-proximity access control for OT environments.
+presence access control for OT environments.
 
 Run:
     flask --app app run --port 5000
@@ -10,6 +10,7 @@ or
 """
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 
@@ -61,6 +62,9 @@ def _rp_id() -> str:
 
 def _origin() -> str:
     return ORIGIN or f"{request.scheme}://{request.host}"
+
+
+log = logging.getLogger(__name__)
 
 
 def create_app() -> Flask:
@@ -140,8 +144,9 @@ def create_app() -> Flask:
                 expected_origin=_origin(),
                 require_user_verification=False,
             )
-        except Exception as exc:  # noqa: BLE001 - surface to client in demo
-            return jsonify({"error": f"verification failed: {exc}"}), 400
+        except Exception:
+            log.exception("registration verification failed")
+            return jsonify({"error": "verification failed"}), 400
 
         expected_attestation = (pending or {}).get("attestation", "direct")
         if expected_attestation == "direct" and str(verified.fmt).lower() == "none":
@@ -238,8 +243,9 @@ def create_app() -> Flask:
                 credential_current_sign_count=stored.sign_count,
                 require_user_verification=False,
             )
-        except Exception as exc:  # noqa: BLE001
-            return jsonify({"error": f"verification failed: {exc}"}), 400
+        except Exception:
+            log.exception("authentication verification failed")
+            return jsonify({"error": "verification failed"}), 400
 
         db.update_sign_count(stored.credential_id, verified.new_sign_count)
         user = db.get_user_by_handle(_handle_for_credential(stored))
@@ -294,4 +300,4 @@ app = create_app()
 if __name__ == "__main__":
     # host="::" binds both IPv4 and IPv6 so "localhost" (::1) reaches the
     # server even when macOS Control Center grabs ports like 5000.
-    app.run(host="::", port=PORT, debug=True)
+    app.run(host="::", port=PORT, debug=os.environ.get("FLASK_DEBUG", "0") == "1")

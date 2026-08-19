@@ -17,7 +17,7 @@ luktas på en nätfiskelänk.
 
 SHALLOT svarar med en *secure-by-design* lösning: en ID-bricka (FIDO2/
 WebAuthn) som bevisar identitet kryptografiskt, kombinerat med
-proximity-verifiering (heartbeat) mellan bricka och fältnod.
+närvaroverifiering (kryptoautentiserad heartbeat) mellan bricka och fältnod.
 
 **Vad projektet bevisar för en arbetsgivare:** jag kan designa och bygga en
 funktionande säkerhetskontroll med *riktig hårdvara*, inte en mock — och jag
@@ -41,15 +41,20 @@ kan förankra den i erkända ramverk och dokumentera varje beslut.
 
 ## Arkitektur (kort)
 
-- **SHALLOT / Smart ID-bricka** — FIDO2-hårdvaran (autenticatorn).
-- **Cub** — agenten (mjukvara, Python på Fedora) som agerar mot brickan.
-- **Mama bear** — admin / gateway-åtkomstpunkt.
+- **PAW (Personal Access Wearable)** — Feather RP2350 + LoRa SX1262 + E-ink + button.
+- **FIDO Key** — ESP32-S3-Nano (PicoFIDO). Removable crypto module.
+- **Field Node** — Pico 2 W + LoRa SX1262 + relay. Mounted on machinery.
+- **Mama Bear** — Arduino UNO Q. Admin/provisioning hub (USB-serial only).
 
 ```
-[ID-bricka / SHALLOT] ──(FIDO2 / USB HID)──> [Cub-agent] ──> [Mama bear / gateway]
-                                    │
-                          (heartbeat / Transit över LoRa — planerat)
+[PAW (RP2350)] ──(LoRa 868 MHz)──> [Field Node (Pico 2 W)] ──(GPIO)──> [Relay/Machine]
+       │
+  (USB-Serial)
+       │
+[FIDO Key (ESP32-S3)]
 ```
+
+**No cloud. No WiFi. No BLE.** Radio + USB-serial only.
 
 ---
 
@@ -81,7 +86,8 @@ en verifierad enhet.
 | Sökväg | Innehåll |
 | --- | --- |
 | `demo/` | WebAuthn auth-server (Flask) + mjukvaru-authenticator + tester |
-| `docs/adr/` | ADR 0001–0004 + domänmodell (GLOSSARY) |
+| `shallot-radio/` | LoRa radio-layer: protocol, state machines, relay controller |
+| `docs/adr/` | ADR 0001–0009 + domänmodell (GLOSSARY) |
 | `docs/HARDWARE-STATUS.md` | Inventering av faktisk hårdvara |
 | `docs/DEVELOPMENT-LOG.md` | Citerbar utvecklingslogg (referens för rapporten) |
 | `docs/research/picofido-ctap2-feasibility.md` | Forskning: PicoFIDO/CTAP2 |

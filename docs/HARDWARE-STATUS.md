@@ -13,12 +13,13 @@
 - **Blocker:** hårdvaran är ej monterad/ihopsatt → firmware- och radio-arbete
   kan inte påbörjas förrän komponenterna kopplas upp.
 
-## Avvikelse mot BOM (viktig)
-`CONTEXT.md` och ticket #17 antar **RP2350 (Pico 2 W)** som FIDO-plattform.
-Den FIDO-enhet som faktiskt validerats är en **ESP32 + pico-fido2**
-([polhenarejos/pico-fido2](https://github.com/polhenarejos/pico-fido2)).
-pico-fido2 bygger på Pico SDK, så ESP32-bygget/porten bör bekräftas vid
-vidare arbete. RP2350-brädorna har ännu ingen tilldelad roll i prototypen.
+## Rollkorrigering (viktig)
+BOM antog ursprungligen **RP2350 (Pico 2 W)** som FIDO-plattform. Beslut
+(2026-08-15): **ESP32-S3-nano flashad med `pico-fido2` = PicoFIDO / ID-bricka**
+([polhenarejos/pico-fido2](https://github.com/polhenarejos/pico-fido2)) —
+redan validerad mot demo-servern över USB HID. De 2× Pico 2 W (RP2350)
+frigörs till andra roller (roll ännu ej tilldelad). pico-fido2 bygger på Pico
+SDK, så ESP32-porten bekräftas vid vidare arbete.
 
 ## Inventeringslista
 | Komponent | Antal | Status | Anteckning |
@@ -73,7 +74,7 @@ PWM på MOSFET-gate.
   är inköpta men inte elektriskt anslutna/monterade. Detta blockerar:
   - Firmware-arbete för Mama Bear/Cub-noder (RP2350).
   - Radio/heartbeat-arbete (LoRa SX1262) — se tickets #4 / #15.
-- **Rollfördelning (korrigerad):** RP2350 (Pico 2 W) = Mama bear / PicoFIDO (per CONTEXT.md); ESP32+pico-fido2 = testad FIDO-enhet (avvikelse). Cub-agenten är mjukvara som hostas på **Fedora (Python)** (ADR 0004, PR #29); UNO Q förkastad för prototypen.
+- **Rollfördelning (korrigerad):** **ESP32-S3-nano (`pico-fido2`) = PicoFIDO / ID-bricka** (validerad mot demo-servern). **2× Pico 2 W (RP2350) = tillgängliga, roll ej tilldelad.** Cub-agenten är mjukvara som hostas på **Fedora (Python)** (ADR 0004, PR #29). **Arduino UNO Q behålls som hårdvarugateway / Mama bear-nod** (styr fläkt/MOSFET och LoRa-heartbeat) — den förkastades inte, se CONTEXT.md och shallot-hardware-architecture-cost.md.
 
 ## Nästa hårdvarusteg
 1. Montera/anslut komponenterna (öppna blockeraren ovan).

@@ -1,0 +1,29 @@
+# Cub Agent Containerfile
+# ADR 0005: rootless Podman; ADR 0007: OSS stack
+# Base: Fedora (ADR 0004) + Python 3.12
+
+FROM fedora:40 AS builder
+
+RUN dnf install -y python3.12 python3.12-pip python3.12-devel gcc && \
+    dnf clean all
+
+WORKDIR /app
+COPY pyproject.toml .
+RUN pip3 install --no-cache-dir --break-system-packages .
+
+COPY . .
+RUN pip3 install --no-cache-dir --break-system-packages -e .
+
+FROM fedora:40
+
+RUN dnf install -y python3.12 && dnf clean all && \
+    useradd -r -s /bin/false cub
+
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin/cub /usr/local/bin/cub
+COPY --from=builder /app /app
+
+USER cub
+WORKDIR /app
+
+ENTRYPOINT ["python3", "-m", "cub"]

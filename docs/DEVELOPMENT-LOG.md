@@ -4,13 +4,14 @@
 > SHALLOT-prototypen, med länkar till GitHub-issues, PR:er och ADR:er så att
 > arbetet kan refereras direkt i uppsatsen.
 >
-> Senast uppdaterad: 2026-08-13.
+> Senast uppdaterad: 2026-08-19.
 
 ## Status just nu
 - WebAuthn/FIDO2 auth-server i `demo/` — fungerande och testad (9 tester passerar).
 - ADR:er + domänmodell i `docs/adr/`.
 - Forskningsrapport (PicoFIDO/CTAP2) i `docs/research/picofido-ctap2-feasibility.md`.
 - Attestation-verifiering implementerad (DIRECT som standard, `none` rejectas).
+- LoRa radio-lager i `shallot-radio/` — beacon/auth protocol, state machines, relay controller.
 
 ## Vad som gjorts (kronologi)
 | Steg | Vad | Referens |
@@ -20,6 +21,7 @@
 | 3 | ADR:er (0001–0003) + domänmodell/ordlista | PR [#21](https://github.com/Tripl321/yh-cybersec-prototype/pull/21) |
 | 4 | Forskningsrapport: går PicoFIDO (RP2350) köra CTAP2-passkey? — Ja | Issue [#13](https://github.com/Tripl321/yh-cybersec-prototype/issues/13), PR [#23](https://github.com/Tripl321/yh-cybersec-prototype/pull/23) |
 | 5 | Attestation: verifiera self-attestation på hårdvaruvägen, rejecta `none` | Issue [#14](https://github.com/Tripl321/yh-cybersec-prototype/issues/14), PR [#24](https://github.com/Tripl321/yh-cybersec-prototype/pull/24) |
+| 6 | LoRa radio-lager: beacon/auth protocol (raw bytes), state machines, relay controller, pin maps | shallot-radio/ |
 
 ## Fattade beslut (ADR / tickets)
 - **Bibliotek:** `webauthn` (pyauth, v3.x), *inte* `py-webauthn` (felaktigt gammalt paket på PyPI). — [ADR 0001](docs/adr/0001-webauthn-rp-library.md), PR [#21](https://github.com/Tripl321/yh-cybersec-prototype/pull/21)
@@ -27,6 +29,8 @@
 - **Roller:** `mama_bear` (admin/gateway) och `cub` (fältnod/ID-bricka) modelleras som WebAuthn-users med varsin credential-uppsättning. — [ADR 0003](docs/adr/0003-access-roles-mama-bear-cub.md), PR [#21](https://github.com/Tripl321/yh-cybersec-prototype/pull/21)
 - **Attestation:** verifiera self-attestation på hårdvaruvägen. Servern begär `DIRECT` som standard och rejectar registreringar där autenticatorn returnerar `fmt=none` (mjukvarunycklar). Enhetsbindning via verifierad attestation (packed/self) + AAGUID. — Issue [#14](https://github.com/Tripl321/yh-cybersec-prototype/issues/14), PR [#24](https://github.com/Tripl321/yh-cybersec-prototype/pull/24)
 - **PicoFIDO/CTAP2-feasibility:** genomförbart via `polhenarejos/pico-fido` (USB HID); RP2350 räcker, BLE saknas. — Issue [#13](https://github.com/Tripl321/yh-cybersec-prototype/issues/13), PR [#23](https://github.com/Tripl321/yh-cybersec-prototype/pull/23)
+- **Raw bytes for LoRa framing:** struct.pack/unpack, no JSON. — [ADR 0008](docs/adr/0008-raw-bytes-for-lora-framing.md)
+- **Epoch context in auth frame:** day field for offline revocation. — [ADR 0009](docs/adr/0009-epoch-context-in-auth-frame.md)
 
 ## Hårdvara (validerad)
 - ESP32 flashad med `pico-fido2` ([polhenarejos/pico-fido2](https://github.com/polhenarejos/pico-fido2)) har registrerats mot demo-servern över USB HID — WebAuthn-RP-integrationen är validerad med riktig hårdvara. — Issue [#6](https://github.com/Tripl321/yh-cybersec-prototype/issues/6)
