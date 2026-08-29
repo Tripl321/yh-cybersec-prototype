@@ -1,13 +1,11 @@
-"""Pydantic AI agent — reasoning brain wired to harness tools."""
+"""Agno agent — reasoning brain wired to harness tools."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from agno.agent import Agent
+from agno.tools.decorator import tool
 
-from pydantic_ai import Agent, RunContext
-
-if TYPE_CHECKING:
-    from shallot_harness.harness import Harness
+from shallot_harness.harness import Harness
 
 SYSTEM_PROMPT = """You are SHALLOT Harness — a proactive personal agent for project management, development,
 research, cybersecurity, and physical builds for the SHALLOT OT access control project.
@@ -41,24 +39,24 @@ Rules:
 
 """
 
-# pydantic-ai 0.8.1 has no native Ollama; route via Ollama's OpenAI-compatible /v1:
-# set OPENAI_BASE_URL=http://localhost:11434/v1 and OPENAI_API_KEY=ollama.
-DEFAULT_MODEL = "openai:ministral-3:8b-instruct-2512-q4_K_M"
-DEFAULT_VISION_MODEL = "openai:ministral-3:8b-instruct-2512-q4_K_M"
+DEFAULT_MODEL = "ollama:qwen3:14b"
+DEFAULT_VISION_MODEL = "ollama:qwen3-vl:8b"
 
 
 def create_agent(harness: Harness, model: str | None = None) -> Agent:
-    """Create a Pydantic AI agent with tools bound to a harness instance.
+    """Create an Agno agent with tools bound to a harness instance.
+
+    Agno supports native Ollama via string shorthand "ollama:model" or
+    agno.models.ollama.Ollama(id="..."). No OPENAI_API_KEY / BASE_URL hack needed.
 
     Args:
         harness: The harness instance to bind tools to.
-        model: Model string (e.g. "ollama:mixtral", "ollama:llava",
-               "openai:gpt-4o"). Defaults to ollama:mixtral.
+        model: Model string (e.g. "ollama:qwen3:14b", "ollama:qwen3-vl:8b",
+               "openai:gpt-4o"). Defaults to ollama:qwen3:14b.
     """
-    agent = Agent(model or DEFAULT_MODEL, system_prompt=SYSTEM_PROMPT)
 
-    @agent.tool
-    def get_project_state(ctx: RunContext[None]) -> str:
+    @tool
+    def get_project_state() -> str:
         """Get the current SHALLOT project state — next action, verification criterion, issue."""
         state = harness.current_state()
         if state is None:
@@ -70,8 +68,8 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
             f"Verification: {state.verification_criterion}"
         )
 
-    @agent.tool
-    def get_event_history(ctx: RunContext[None], limit: int = 10) -> str:
+    @tool
+    def get_event_history(limit: int = 10) -> str:
         """Get recent project events with timestamps and provenance."""
         events = harness._ledger.events(harness.project_id)
         if not events:
@@ -82,8 +80,8 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
             lines.append(f"[{e.occurred_at}] {e.payload.next_action}{prov}")
         return "\n".join(lines)
 
-    @agent.tool
-    def run_harness(ctx: RunContext[None], goal: str) -> str:
+    @tool
+    def run_harness(goal: str) -> str:
         """Run one harness lifecycle: read context, reason, gate, record. Returns the next action and verdict."""
         result = harness.run(goal=goal)
         state = result["state"]
@@ -95,8 +93,8 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
             f"Reason: {verdict.reason}"
         )
 
-    @agent.tool
-    def search_memory(ctx: RunContext[None], query: str = "", namespace: str = "") -> str:
+    @tool
+    def search_memory(query: str = "", namespace: str = "") -> str:
         """Search structured memory. Filter by namespace (working, episodic, semantic, procedural) or query content."""
         ns = namespace or None
         memories = harness._memory.query(namespace=ns)
@@ -107,8 +105,8 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
         lines = [f"[{m.namespace}/{m.scope}] {m.content}" for m in memories]
         return "\n".join(lines)
 
-    @agent.tool
-    def add_memory(ctx: RunContext[None], content: str, namespace: str = "episodic", scope: str = "workspace:shallot") -> str:
+    @tool
+    def add_memory(content: str = "", namespace: str = "episodic", scope: str = "workspace:shallot") -> str:
         """Add a new memory entry. Use for facts, decisions, or observations worth remembering.
 
         HITL-gated (UX research 5.4): canonical memory writes require human approval before they
@@ -116,14 +114,18 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
         """
         from shallot_harness.memory import Memory
 
-        if not harness.request_approval("memory.write", f"memory:{scope}", {"content": content, "namespace": namespace}):
-            return "⏳ Minne väntar på godkännande (action pending). Använd approve_action för att godkänna innan det sparas."
-        m = Memory.create(namespace=namespace, scope=scope, content=content)
+        text = (content or "").strip()
+        if not text:
+            return "To store memory, I need the content to remember. Please provide the text or details you want saved."
+
+        if not harness.request_approval("memory.write", f"memory:{scope}", {"content": text, "namespace": namespace}):
+            return "Minne vantar pa godkannande (action pending). Anvand approve_action for att godkanna innan det sparas."
+        m = Memory.create(namespace=namespace, scope=scope, content=text)
         harness._memory.add(m)
         return f"Memory stored: {m.memory_id} ({m.namespace}/{m.scope})"
 
-    @agent.tool
-    def approve_action(ctx: RunContext[None], action_id: str) -> str:
+    @tool
+    def approve_action(action_id: str) -> str:
         """Approve a pending HITL action by its ID."""
         from uuid import UUID
 
@@ -133,10 +135,24 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
             return f"Invalid action_id: {action_id!r}. Use a pending ID from get_approvals."
         return "Approved." if ok else "Action not found or already processed."
 
-    @agent.tool
-    def get_budget_status(ctx: RunContext[None]) -> str:
+    @tool
+    def get_budget_status() -> str:
         """Check remaining cloud budget for this month (€20 limit)."""
         remaining = harness._policy._budget.remaining()
         return f"Budget remaining: €{remaining:.2f} / €20.00"
 
+    agent = Agent(
+        model=model or DEFAULT_MODEL,
+        instructions=SYSTEM_PROMPT,
+        tools=[
+            get_project_state,
+            get_event_history,
+            run_harness,
+            search_memory,
+            add_memory,
+            approve_action,
+            get_budget_status,
+        ],
+        markdown=True,
+    )
     return agent
