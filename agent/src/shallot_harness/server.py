@@ -6,7 +6,7 @@ approval gates. Stdlib only; no new dependencies.
 Run:  uv run python -m shallot_harness.server
 Env:  HARNESS_MODEL  (default ollama:qwen3:14b)
       HARNESS_HOST  (default 0.0.0.0)
-      HARNESS_PORT  (default 8000)
+      HARNESS_PORT  (default 7777 — Agno AgentOS standard, 8000 upptaget av demo/system)
       HARNESS_DATA  (default ./harness_data)
 """
 
@@ -132,9 +132,14 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     host = os.environ.get("HARNESS_HOST", "0.0.0.0")
-    port = int(os.environ.get("HARNESS_PORT", "8000"))
+    port = int(os.environ.get("HARNESS_PORT", "7777"))
     print(f"SHALLOT Harness server on {host}:{port} (model {MODEL})")
-    ThreadingHTTPServer((host, port), Handler).serve_forever()
+    try:
+        ThreadingHTTPServer((host, port), Handler).serve_forever()
+    except OSError as e:
+        if "Address already in use" in str(e):
+            print(f"Port {port} upptagen — prova HARNESS_PORT=7777 eller 8001 (demo kör på 8000): {e}")
+        raise
 
 
 if __name__ == "__main__":
