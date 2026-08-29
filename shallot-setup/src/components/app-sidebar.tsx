@@ -21,6 +21,8 @@ import {
   Brain,
   Settings,
   LogOut,
+  Eye,
+  MessageSquare,
 } from "lucide-react";
 
 export type Page =
@@ -29,14 +31,34 @@ export type Page =
   | "infrastructure"
   | "security"
   | "models"
-  | "settings";
+  | "settings"
+  | "vision"
+  | "chat";
 
-const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "hardware", label: "Hardware", icon: Cpu },
-  { id: "infrastructure", label: "Infrastructure", icon: Server },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "models", label: "Models", icon: Brain },
+const NAV_SECTIONS: { label: string; items: { id: Page; label: string; icon: typeof LayoutDashboard }[] }[] = [
+  {
+    label: "Work",
+    items: [
+      { id: "chat", label: "Chat", icon: MessageSquare },
+      { id: "vision", label: "Vision", icon: Eye },
+    ],
+  },
+  {
+    label: "Systems",
+    items: [
+      { id: "overview", label: "Overview", icon: LayoutDashboard },
+      { id: "hardware", label: "Hardware", icon: Cpu },
+      { id: "infrastructure", label: "Infrastructure", icon: Server },
+    ],
+  },
+  {
+    label: "Governance",
+    items: [
+      { id: "security", label: "Security", icon: Shield },
+      { id: "models", label: "Models", icon: Brain },
+      { id: "settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 interface AppSidebarProps {
@@ -63,27 +85,29 @@ export function AppSidebar({ active, onNavigate }: AppSidebarProps) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs text-muted-foreground/60">
-            Management
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-                <SidebarMenuItem key={id}>
-                  <SidebarMenuButton
-                    isActive={active === id}
-                    onClick={() => onNavigate(id)}
-                    className="cursor-pointer"
-                  >
-                    <Icon className="size-4" />
-                    <span>{label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {NAV_SECTIONS.map((section) => (
+          <SidebarGroup key={section.label}>
+            <SidebarGroupLabel className="text-xs text-muted-foreground/60">
+              {section.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map(({ id, label, icon: Icon }) => (
+                  <SidebarMenuItem key={id}>
+                    <SidebarMenuButton
+                      isActive={active === id}
+                      onClick={() => onNavigate(id)}
+                      className="cursor-pointer"
+                    >
+                      <Icon className="size-4" />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

@@ -1,0 +1,17 @@
+{
+  "name": "SHALLOT Vision",
+  "short_name": "SHALLOT",
+  "description": "SHALLOT OT — breadboard vision + harness",
+  "start_url": "/vision",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

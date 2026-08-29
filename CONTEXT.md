@@ -27,6 +27,12 @@ _Aavoid_: authenticator, key (ambiguous)
 Edge-enforcement point. Pico 2 W + LoRa + relay. Broadcasts beacons, verifies auth, controls relay.
 _Avoid_: lock, actuator, node
 
+### Mjukvara
+
+**SHALLOT Harness**:
+Fristående personlig agentplattform för projektledning, utveckling, forskning, cybersäkerhetsarbete och fysiska byggen. Börjar med SHALLOT som enda workspace men kan senare bära separata personliga och projektspecifika minnen. Skild från Cub, som är den operativa agenten i OT-demon.
+_Avoid_: Cub, SHALLOT-agenten (otydligt vilken agent)
+
 ### Kommunikation
 
 **Beacon**:
@@ -105,3 +111,4 @@ _Avoid_: manual, offline,传统
 - Wayfinder-map: `docs/wayfinder-map.md`
 - Specifikation: `docs/specification.md`
 - Tickets: `docs/tickets.md`
+- Build-ref (Agno-MVP): `docs/architecture/agno-mvp-build.md`
