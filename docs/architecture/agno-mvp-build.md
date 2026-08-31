@@ -183,7 +183,7 @@ AgnoInstrumentor().instrument()
 ## AgentUI (OSS UI, AgentOS-visa)
 
 - OSS Next.js/TS: `npx create-agent-ui@latest` (eller `git clone https://github.com/agno-agi/agent-ui`).
-- `cd agent-ui && npm run dev` → `http://localhost:3000`, ange endpointhost mot `localhost:7777`.
+- `cd agent-ui && npm run dev` → `http://localhost:3006`, ange endpoint mot `http://localhost:8001`.
 - "AgentOS only uses data in your database. No data is sent to Agno." — local-first-privacy lätt.
 - **Används som referens/utgångspunkt, INTE som ersättare**: target = custom PWA (OT-vision + approval-UI), AgentUI + repos stilkopia för Annex.
 

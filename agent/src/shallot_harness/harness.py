@@ -25,6 +25,7 @@ class Harness:
         memory: MemoryStore | None = None,
     ) -> None:
         self.project_id = project_id
+        self._repo_path = repo_path
         self._git = GitContext(repo_path)
         self._github = GitHubContext(repo_path)
         self._repo = RepoContext(repo_path)
@@ -32,6 +33,8 @@ class Harness:
         self._reasoner = reasoner
         self._policy = policy or PolicyGate()
         self._memory = memory or MemoryStore()
+        self._last_next_action = None
+        self._loop_count = 0
 
     def current_state(self) -> ProjectState | None:
         return self._ledger.state(self.project_id)
@@ -84,6 +87,23 @@ class Harness:
             verification_criterion=response.reasoning,
             observed_at=action.requested_at,
         )
+
+        next_action = response.next_action
+        if next_action == self._last_next_action:
+            self._loop_count += 1
+        else:
+            self._loop_count = 0
+        self._last_next_action = next_action
+
+        if self._loop_count >= 3:
+            return {
+                "state": new_state,
+                "action": action,
+                "verdict": verdict,
+                "response": response,
+                "loops_detected": True,
+                "loop_message": f"Harness stopped: next_action repeated {self._loop_count} times. Consider changing strategy or getting human input.",
+            }
 
         provenance = Provenance(
             actor="shallot-harness",

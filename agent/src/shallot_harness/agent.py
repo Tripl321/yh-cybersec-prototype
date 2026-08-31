@@ -1,41 +1,52 @@
-"""Agno agent — reasoning brain wired to harness tools."""
+"""Agno agent — SHALLOT project management brain."""
 
 from __future__ import annotations
 
+import os
+
 from agno.agent import Agent
 from agno.tools.decorator import tool
+from agno.tools.duckduckgo import DuckDuckGoTools
 
 from shallot_harness.harness import Harness
 
-SYSTEM_PROMPT = """You are SHALLOT Harness — a proactive personal agent for project management, development,
-research, cybersecurity, and physical builds for the SHALLOT OT access control project.
+SYSTEM_PROMPT = """You are SHALLOT Harness — a project management agent for the SHALLOT OT access control prototype (YH cybersecurity project).
 
-You have access to project state, event history, memory, and the ability to run
-lifecycle actions. Use the tools to ground your answers in real context.
+Fixed architecture:
+- PAW: Feather RP2350 + E-ink + Core1262-HF LoRa + LiPo
+- FIDO Key: ESP32-S3-Nano running PicoFIDO (USB-serial signing)
+- Field Node: Pico 2 W + Core1262-HF LoRa + relay
+- Mama Bear: Arduino UNO Q (air-gapped provisioning root)
 
-Be PROACTIVE. Do not end with "what would you like me to do?" or ask redundant
-clarifying questions. When the user gives a goal or asks a question, take the next
-sensible step yourself: check state, pull relevant history/memory, and either act or
-give a concrete recommendation with the reasoning. Only ask the user when a real
-decision or approval is required.
-
-CRITICAL ANTI-STALL RULES:
-- NEVER reply by only describing a tool and asking "Vill du att jag...?", "Ska jag...?",
-  or "Vill du att jag kollar...". If a tool would help answer the question, CALL IT
-  IMMEDIATELY, then answer from its result. Do not ask permission to use a read-only tool.
-- On ANY question about project status, phase, milestones, blockers, or progress, call
-  get_project_state (and get_event_history if useful) FIRST, then summarize the real
-  findings in 2-4 bullet points. No preamble, no "let me know if you want...".
-- Keep turns concise: one or two tool calls + a short answer beats a long monologue.
+Communication:
+- Beacon: Field Node → PAW (plaintext LoRa, 13 bytes)
+- Auth request: PAW → Field Node (signed LoRa, 41 bytes, HMAC-SHA256)
+- Nonce: 32-bit challenge from Field Node, one-time use
+- Epoch-key: rolling HMAC secret synced via Mama Bear USB-serial
 
 Rules:
-- Check current state (get_project_state) before suggesting actions
+- Check current state before suggesting actions
 - Prefer acting on context you can fetch over asking the user
 - Record every action with provenance
-- Sensitive operations (code writes, memory promotion) require human approval — return
-  the pending approval rather than performing the write
+- Sensitive operations require human approval — return the pending approval
 - Stay within the €20/month cloud budget
 - Prefer local Ollama inference over cloud providers
+
+Hardware bring-up order:
+1. Power from USB first. Add LiPo only after USB bring-up.
+2. Check resistance to ground before power; measure rails before inserting the radio.
+3. Attach a matched 868 MHz antenna before SX1262 transmission.
+4. Bring up one interface at a time: power → SPI → radio standby → RX/TX → peripherals.
+5. Unknown pinout means blocker, not a guessed wire.
+
+Security verification checklist:
+- valid auth grants access
+- invalid HMAC rejects
+- reused nonce/counter rejects
+- expired epoch rejects
+- RSSI below threshold rejects
+- heartbeat timeout returns relay OFF
+- reboot starts relay OFF
 
 """
 
@@ -44,16 +55,7 @@ DEFAULT_VISION_MODEL = "ollama:qwen3-vl:8b"
 
 
 def create_agent(harness: Harness, model: str | None = None) -> Agent:
-    """Create an Agno agent with tools bound to a harness instance.
-
-    Agno supports native Ollama via string shorthand "ollama:model" or
-    agno.models.ollama.Ollama(id="..."). No OPENAI_API_KEY / BASE_URL hack needed.
-
-    Args:
-        harness: The harness instance to bind tools to.
-        model: Model string (e.g. "ollama:qwen3:14b", "ollama:qwen3-vl:8b",
-               "openai:gpt-4o"). Defaults to ollama:qwen3:14b.
-    """
+    """Create an Agno agent with tools bound to a harness instance."""
 
     @tool
     def get_project_state() -> str:
@@ -107,19 +109,15 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
 
     @tool
     def add_memory(content: str = "", namespace: str = "episodic", scope: str = "workspace:shallot") -> str:
-        """Add a new memory entry. Use for facts, decisions, or observations worth remembering.
-
-        HITL-gated (UX research 5.4): canonical memory writes require human approval before they
-        become persistent fact. If pending, the entry is NOT stored and the caller must approve it.
-        """
+        """Add a new memory entry. Use for facts, decisions, or observations worth remembering."""
         from shallot_harness.memory import Memory
 
         text = (content or "").strip()
         if not text:
-            return "To store memory, I need the content to remember. Please provide the text or details you want saved."
+            return "To store memory, I need the content to remember."
 
         if not harness.request_approval("memory.write", f"memory:{scope}", {"content": text, "namespace": namespace}):
-            return "Minne vantar pa godkannande (action pending). Anvand approve_action for att godkanna innan det sparas."
+            return "Memory pending approval. Use approve_action to approve before it is stored."
         m = Memory.create(namespace=namespace, scope=scope, content=text)
         harness._memory.add(m)
         return f"Memory stored: {m.memory_id} ({m.namespace}/{m.scope})"
@@ -132,7 +130,7 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
         try:
             ok = harness._policy.approve(UUID(action_id))
         except (ValueError, TypeError):
-            return f"Invalid action_id: {action_id!r}. Use a pending ID from get_approvals."
+            return f"Invalid action_id: {action_id!r}."
         return "Approved." if ok else "Action not found or already processed."
 
     @tool
@@ -141,7 +139,55 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
         remaining = harness._policy._budget.remaining()
         return f"Budget remaining: €{remaining:.2f} / €20.00"
 
+    @tool
+    def read_file(path: str) -> str:
+        """Read a text file from the project repo. Use relative paths from the repo root."""
+        base = harness._repo_path or os.getcwd()
+        target = os.path.join(base, path)
+        target = os.path.normpath(target)
+        if not target.startswith(os.path.normpath(base)):
+            return "Error: path escapes repo root"
+        if not os.path.exists(target):
+            return f"File not found: {path}"
+        if os.path.isdir(target):
+            return f"Error: {path} is a directory, not a file"
+        try:
+            with open(target, "r", encoding="utf-8", errors="replace") as f:
+                data = f.read()
+        except Exception as exc:
+            return f"Error reading {path}: {exc}"
+        if len(data) > 12000:
+            data = data[:12000] + "\n... [truncated]"
+        return data
+
+    @tool
+    def list_files(pattern: str = "**/*") -> str:
+        """List files in the project repo matching a glob pattern (default: all files)."""
+        import glob
+
+        base = harness._repo_path or os.getcwd()
+        matches = glob.glob(os.path.join(base, pattern), recursive=True)
+        files = [os.path.relpath(m, base) for m in matches if os.path.isfile(m)]
+        if not files:
+            return "No files found."
+        return "\n".join(sorted(files)[:50])
+
+    @tool
+    def search_files(query: str) -> str:
+        """Search for files in the project by filename (case-insensitive substring match)."""
+        base = harness._repo_path or os.getcwd()
+        matches = []
+        for root, dirs, files in os.walk(base):
+            for f in files:
+                if query.lower() in f.lower():
+                    matches.append(os.path.relpath(os.path.join(root, f), base))
+        if not matches:
+            return f"No files matching '{query}' found."
+        return "\n".join(sorted(matches)[:20])
+
     agent = Agent(
+        id="shallot",
+        name="SHALLOT Harness",
         model=model or DEFAULT_MODEL,
         instructions=SYSTEM_PROMPT,
         tools=[
@@ -152,6 +198,10 @@ def create_agent(harness: Harness, model: str | None = None) -> Agent:
             add_memory,
             approve_action,
             get_budget_status,
+            read_file,
+            list_files,
+            search_files,
+            DuckDuckGoTools(),
         ],
         markdown=True,
     )

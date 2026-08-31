@@ -33,6 +33,26 @@ _Avoid_: lock, actuator, node
 Fristående personlig agentplattform för projektledning, utveckling, forskning, cybersäkerhetsarbete och fysiska byggen. Börjar med SHALLOT som enda workspace men kan senare bära separata personliga och projektspecifika minnen. Skild från Cub, som är den operativa agenten i OT-demon.
 _Avoid_: Cub, SHALLOT-agenten (otydligt vilken agent)
 
+**HITL** (Human-in-the-Loop):
+Mänskligt godkännande av känsliga agent-åtgärder innan de verkställs. SHALLOT Harness använder Agnos durable/restart-safe HITL: verktyg pausar för bekräftelse (`requires_confirmation=True`), tillstånd persisteras i DB via AgentOS (ADR 0010). Cub använder Pydantic AI deferred tools (ADR 0006/0007). Samma begrepp, skild runtime.
+_Avoid_: approval, bekräftelse (för virrigt — använd HITL)
+
+**AgentOS**:
+Agno v3-runtime (ADR 0010) som kör SHALLOT Harness: FastAPI-API, SSE-streaming, sessioner/persistens, MCP-server, durable HITL. MVP kör som CLI (`cli_app()`) default; `AgentOS.serve(:7777)` är opt-in via `SHALLOT_SERVE=1`/`--serve` (ett `shallot`-objekt, två entrypoints).
+_Avoid_: serve, server (otydligt — använd AgentOS.serve)
+
+**AG-UI**:
+Agno-nativt protokoll för chat/approval-ytan; stock `agent-ui` talar AG-UI mot AgentOS på :7777. Harness använder AG-UI. ACP är Cub-stacken (ADR 0007) och används inte för harness.
+_Avoid_: ACP, UI-protokoll
+
+**run_harness**:
+Den enda privilegierade exekveringsverktyget i SHALLOT Harness. Kör ett shell-kommando i repo-roten, HITL-grindat (`requires_confirmation=True`) och begränsat av en tillåtelselista (test/build/lint + läsning; deny-by-default, inget nätverk, inga skrivningar utanför repo, inget sudo). OBS: `cub.hooks` egress-deny är **namnbaserad** (`EGRESS_TOOLS`) och täcker INTE shell-kommandots innehåll — därför har `run_harness` en egen innehålls-baserad allowlist.
+_Avoid_: exec, shell, kör (otydligt — använd run_harness)
+
+**Minnes-backend (harness)**:
+MVP: `SqliteDb` (agno_agent.py) för sessioner, agentic memory (`agno_memories`) och HITL-approvals (`agno_approvals`). Post-MVP: byte till `PostgresDb` + `PgVector` (ADR 0010) via en `get_db()`-fabrik (env `SHALLOT_DB_URL`) — samma Db-interface, inga verktygskontrakt ändras. Agentic memory och durable HITL rider på db-bytet; kunskaps-RAG (pgvector) läggs till via `harness/knowledge.py`-seam (D4/D5). Lokal-first: ingen moln-egress.
+_Avoid_: memory, db (otydligt — använd Minnes-backend)
+
 ### Kommunikation
 
 **Beacon**:
