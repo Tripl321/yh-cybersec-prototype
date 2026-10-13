@@ -2,9 +2,9 @@
 - name: Reconfirm the local-only verification boundary
   ansible.builtin.assert:
     that:
-      - shallot_local_only | bool
+      - shallot_verify_local_only | bool
       - (ansible_connection | default('')) == 'local'
-      - not (shallot_external_bootstrap_enabled | bool)
+      - not (shallot_verify_external_bootstrap_enabled | bool)
     fail_msg: Verification may not target external hosts or enable bootstrap.
 
 - name: Inspect rootless Podman for verification
@@ -27,50 +27,50 @@
 
 - name: Inspect the optional local secrets file
   ansible.builtin.stat:
-    path: "{{ shallot_secrets_file }}"
-  register: shallot_secrets_stat
+    path: "{{ shallot_verify_secrets_file }}"
+  register: shallot_verify_secrets_stat
 
 - name: Require restrictive permissions for local secrets
   ansible.builtin.assert:
     that:
-      - shallot_secrets_stat.stat.mode in ['0400', '0600']
+      - shallot_verify_secrets_stat.stat.mode in ['0400', '0600']
     fail_msg: >-
-      {{ shallot_secrets_file }} must be readable only by its owner (0400 or 0600).
-  when: shallot_secrets_stat.stat.exists
+      {{ shallot_verify_secrets_file }} must be readable only by its owner (0400 or 0600).
+  when: shallot_verify_secrets_stat.stat.exists
 
 - name: Read the Compose development reference
   ansible.builtin.slurp:
-    src: "{{ shallot_compose_reference }}"
-  register: shallot_compose_file
+    src: "{{ shallot_verify_compose_reference }}"
+  register: shallot_verify_compose_file
 
 - name: Record known runtime-policy findings
   ansible.builtin.set_fact:
-    shallot_runtime_findings: >-
+    shallot_verify_runtime_findings: >-
       {{
-        ([] if ':latest' not in (shallot_compose_file.content | b64decode) else
+        ([] if ':latest' not in (shallot_verify_compose_file.content | b64decode) else
           ['Compose reference contains unpinned :latest images'])
         +
-        ([] if 'INDEXER_PASSWORD=admin' not in (shallot_compose_file.content | b64decode) else
+        ([] if 'INDEXER_PASSWORD=admin' not in (shallot_verify_compose_file.content | b64decode) else
           ['Compose reference contains the known Wazuh indexer default password'])
       }}
 
 - name: Report runtime-policy findings
   ansible.builtin.debug:
-    var: shallot_runtime_findings
+    var: shallot_verify_runtime_findings
 
 - name: Enforce runtime policy when explicitly enabled
   ansible.builtin.assert:
     that:
-      - shallot_runtime_findings | length == 0
+      - shallot_verify_runtime_findings | length == 0
     fail_msg: "Runtime-policy findings must be resolved before enforcement is enabled."
-  when: shallot_enforce_runtime_policy | bool
+  when: shallot_verify_enforce_runtime_policy | bool
 
 - name: Collect local listening sockets without changing the host
   ansible.builtin.command:
     argv:
       - ss
       - -lntup
-  register: shallot_listening_sockets
+  register: shallot_verify_listening_sockets
   changed_when: false
   failed_when: false
 
@@ -79,6 +79,6 @@
     msg:
       - "Local-only boundary: PASS"
       - "Rootless Podman: PASS"
-      - "Secrets permissions: {{ 'PASS' if shallot_secrets_stat.stat.exists else 'NOT CONFIGURED' }}"
-      - "Runtime policy: {{ 'PASS' if (shallot_runtime_findings | length == 0) else 'AUDIT FINDINGS' }}"
+      - "Secrets permissions: {{ 'PASS' if shallot_verify_secrets_stat.stat.exists else 'NOT CONFIGURED' }}"
+      - "Runtime policy: {{ 'PASS' if (shallot_verify_runtime_findings | length == 0) else 'AUDIT FINDINGS' }}"
       - "No services, external hosts, VPS systems, or physical SHALLOT devices were modified."

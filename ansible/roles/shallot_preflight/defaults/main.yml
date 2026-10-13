@@ -1,7 +1,7 @@
 ---
-shallot_supported_os_families:
+shallot_preflight_supported_os_families:
   - Archlinux
-shallot_minimum_ansible_version: "2.16"
-shallot_local_only: true
-shallot_external_bootstrap_enabled: false
+shallot_preflight_minimum_ansible_version: "2.16"
+shallot_preflight_local_only: true
+shallot_preflight_external_bootstrap_enabled: false
 shallot_preflight_require_podman: true

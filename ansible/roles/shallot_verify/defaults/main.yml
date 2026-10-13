@@ -1,6 +1,6 @@
 ---
-shallot_local_only: true
-shallot_external_bootstrap_enabled: false
-shallot_enforce_runtime_policy: false
-shallot_secrets_file: "{{ inventory_dir }}/group_vars/secrets.local.yml"
-shallot_compose_reference: "{{ playbook_dir | dirname | dirname }}/shallot-infra/compose.yml"
+shallot_verify_local_only: true
+shallot_verify_external_bootstrap_enabled: false
+shallot_verify_enforce_runtime_policy: false
+shallot_verify_secrets_file: "{{ inventory_dir }}/group_vars/secrets.local.yml"
+shallot_verify_compose_reference: "{{ playbook_dir | dirname | dirname }}/shallot-infra/compose.yml"
