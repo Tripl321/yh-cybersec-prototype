@@ -1,0 +1,28 @@
+---
+shallot_supported_os_families:
+  - Archlinux
+
+shallot_minimum_ansible_version: "2.16"
+shallot_local_only: true
+shallot_external_bootstrap_enabled: false
+shallot_preflight_require_podman: true
+shallot_enforce_runtime_policy: false
+
+shallot_repo_root: "{{ playbook_dir | dirname | dirname }}"
+shallot_runtime_root: "{{ ansible_env.HOME }}/.local/share/shallot"
+shallot_config_root: "{{ ansible_env.HOME }}/.config/shallot"
+shallot_quadlet_root: "{{ ansible_env.HOME }}/.config/containers/systemd"
+shallot_backup_root: "{{ ansible_env.HOME }}/.local/state/shallot/backups"
+shallot_secrets_file: "{{ inventory_dir }}/group_vars/secrets.local.yml"
+shallot_compose_reference: "{{ shallot_repo_root }}/shallot-infra/compose.yml"
+
+shallot_expected_loopback_ports:
+  - 11434
+  - 55000
+  - 1514
+  - 1515
+  - 9200
+  - 8000
+  - 8888
+  - 6767
+  - 3000

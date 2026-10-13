@@ -1,0 +1,4 @@
+inventory/lab/group_vars/secrets.local.yml
+artifacts/
+backups/
+*.retry

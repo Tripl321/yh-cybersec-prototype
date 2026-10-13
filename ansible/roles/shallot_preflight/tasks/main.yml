@@ -1,0 +1,126 @@
+---
+- name: Require the supported Ansible version
+  ansible.builtin.assert:
+    that:
+      - ansible_version.full is version(shallot_minimum_ansible_version, '>=')
+    fail_msg: >-
+      SHALLOT requires ansible-core {{ shallot_minimum_ansible_version }} or newer;
+      detected {{ ansible_version.full }}.
+
+- name: Enforce the local-only inventory boundary
+  ansible.builtin.assert:
+    that:
+      - shallot_local_only | bool
+      - (ansible_connection | default('')) == 'local'
+      - inventory_hostname in ['localhost', '127.0.0.1']
+    fail_msg: >-
+      The initial SHALLOT baseline may run only against localhost with
+      ansible_connection=local. External hosts are not approved.
+
+- name: Block implicit external bootstrap operations
+  ansible.builtin.assert:
+    that:
+      - not (shallot_external_bootstrap_enabled | bool)
+    fail_msg: >-
+      External image, model, or package bootstrap is disabled for normal runs.
+      It requires a separately reviewed and explicit operation.
+
+- name: Require an unprivileged runtime user
+  ansible.builtin.assert:
+    that:
+      - ansible_user_uid | int != 0
+    fail_msg: Root execution is not permitted for the rootless SHALLOT runtime.
+
+- name: Validate the supported operating-system family
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in shallot_supported_os_families
+    fail_msg: >-
+      Unsupported OS family {{ ansible_os_family }}. The first baseline supports
+      CachyOS/Arch-family hosts only.
+
+- name: Inspect rootless Podman
+  ansible.builtin.command:
+    argv:
+      - podman
+      - info
+      - --format
+      - json
+  register: shallot_podman_info_command
+  changed_when: false
+  failed_when: false
+  when: shallot_preflight_require_podman | bool
+
+- name: Require Podman to be installed
+  ansible.builtin.assert:
+    that:
+      - shallot_podman_info_command.rc == 0
+    fail_msg: >-
+      Podman is unavailable or cannot inspect the current user session. No package
+      installation is performed by this bootstrap baseline.
+  when: shallot_preflight_require_podman | bool
+
+- name: Parse Podman information
+  ansible.builtin.set_fact:
+    shallot_podman_info: "{{ shallot_podman_info_command.stdout | from_json }}"
+  when:
+    - shallot_preflight_require_podman | bool
+    - shallot_podman_info_command.rc == 0
+
+- name: Require rootless Podman mode
+  ansible.builtin.assert:
+    that:
+      - shallot_podman_info.host.security.rootless | bool
+    fail_msg: Podman is not running in rootless mode for the current user.
+  when:
+    - shallot_preflight_require_podman | bool
+    - shallot_podman_info_command.rc == 0
+
+- name: Verify the systemd user manager
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - --user
+      - show-environment
+  register: shallot_systemd_user
+  changed_when: false
+  failed_when: false
+
+- name: Require an available systemd user manager
+  ansible.builtin.assert:
+    that:
+      - shallot_systemd_user.rc == 0
+    fail_msg: >-
+      A systemd user manager is required for rootless Quadlet. This task does not
+      enable lingering or modify the login session.
+
+- name: Check the subordinate UID mapping
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -E
+      - "^{{ ansible_user_id }}:"
+      - /etc/subuid
+  register: shallot_subuid
+  changed_when: false
+  failed_when: false
+
+- name: Check the subordinate GID mapping
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -E
+      - "^{{ ansible_user_id }}:"
+      - /etc/subgid
+  register: shallot_subgid
+  changed_when: false
+  failed_when: false
+
+- name: Require subordinate UID and GID mappings
+  ansible.builtin.assert:
+    that:
+      - shallot_subuid.rc == 0
+      - shallot_subgid.rc == 0
+    fail_msg: >-
+      Rootless Podman requires entries for {{ ansible_user_id }} in both
+      /etc/subuid and /etc/subgid.
