@@ -28,15 +28,15 @@
 - name: Require an unprivileged runtime user
   ansible.builtin.assert:
     that:
-      - ansible_user_uid | int != 0
+      - ansible_facts['user_uid'] | int != 0
     fail_msg: Root execution is not permitted for the rootless SHALLOT runtime.
 
 - name: Validate the supported operating-system family
   ansible.builtin.assert:
     that:
-      - ansible_os_family in shallot_preflight_supported_os_families
+      - ansible_facts['os_family'] in shallot_preflight_supported_os_families
     fail_msg: >-
-      Unsupported OS family {{ ansible_os_family }}. The first baseline supports
+      Unsupported OS family {{ ansible_facts['os_family'] }}. The first baseline supports
       CachyOS/Arch-family hosts only.
 
 - name: Inspect rootless Podman
@@ -99,7 +99,7 @@
     argv:
       - grep
       - -E
-      - "^{{ ansible_user_id }}:"
+      - "^{{ ansible_facts['user_id'] }}:"
       - /etc/subuid
   register: shallot_preflight_subuid
   changed_when: false
@@ -110,7 +110,7 @@
     argv:
       - grep
       - -E
-      - "^{{ ansible_user_id }}:"
+      - "^{{ ansible_facts['user_id'] }}:"
       - /etc/subgid
   register: shallot_preflight_subgid
   changed_when: false
@@ -122,5 +122,5 @@
       - shallot_preflight_subuid.rc == 0
       - shallot_preflight_subgid.rc == 0
     fail_msg: >-
-      Rootless Podman requires entries for {{ ansible_user_id }} in both
+      Rootless Podman requires entries for {{ ansible_facts['user_id'] }} in both
       /etc/subuid and /etc/subgid.
