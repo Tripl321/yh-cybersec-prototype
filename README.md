@@ -2,6 +2,10 @@
 
 **Secure-by-design OT-åtkomstkontroll med phishing-resistent FIDO2-hårdvara.**
 
+> Detta är det kanoniska SHALLOT-repositoryt. Den tidigare separata
+> contact-auth-implementationen migreras till `hardware/contact-auth/`; se ADR
+> 0012 och modulens `MIGRATION.md`.
+
 > YH-projekt (cybersecurity). Målet med projektet är att demonstrera modern,
 > människonära säkerhet i en OT-miljö — och att visa upp den kompetensen för
 > framtida arbetsgivare inom OT-säkerhet / identitets- och åtkomsthantering (IAM).
@@ -13,15 +17,15 @@
 Industriella miljöer (OT) skyddas ofta fortfarande av fysiska nycklar och
 pappersloggböcker — en "baseline" som är opålitlig och omöjlig att revisera.
 Behovet är **phishing-resistent åtkomstkontroll** som håller även om operatören
-luktas på en nätfiskelänk.
+luras av en nätfiskelänk.
 
 SHALLOT svarar med en *secure-by-design* lösning: en ID-bricka (FIDO2/
 WebAuthn) som bevisar identitet kryptografiskt, kombinerat med
-närvaroverifiering (kryptoautentiserad heartbeat) mellan bricka och fältnod.
+närvaroverifiering mellan bricka och fältnod.
 
 **Vad projektet bevisar för en arbetsgivare:** jag kan designa och bygga en
-funktionande säkerhetskontroll med *riktig hårdvara*, inte en mock — och jag
-kan förankra den i erkända ramverk och dokumentera varje beslut.
+fungerande säkerhetskontroll med riktig hårdvara och förankra den i erkända
+ramverk med dokumenterade beslut.
 
 ---
 
@@ -29,55 +33,42 @@ kan förankra den i erkända ramverk och dokumentera varje beslut.
 
 | Kompetens | Hur det visas här |
 | --- | --- |
-| **Phishing-resistent auth** (FIDO2 / CTAP 2.2 / WebAuthn) | Relying Party byggd & testad mot verklig hårdvara (ESP32 + pico-fido2), registrerad över USB HID |
-| **Secure by design** (least privilege, defense in depth, fail-safe) | Varje arkitekturbeslut fångat som ADR i `docs/adr/` |
-| **Ramverk** (NIST CSF 2.0, SP 800-53r5, MITRE ATT&CK, CIS Controls v8) | Genomsyrar designen (se `CONTEXT.md`) |
-| **Fullstack-säkerhet** | Python/Flask-RP, krypto (ECDSA/DER), CTAP-attestation & -assertion, SQLite |
-| **Hårdvarunära säkerhet** | Flashning av FIDO2-firmware, USB HID, egen RP som verifierar enhet |
-| **Användbar säkerhet** (usable security) | Planerad utvärdering — se ticket #18 |
-| **Dokumentation & beslutslogg** | Citerbar utvecklingslogg (`docs/DEVELOPMENT-LOG.md`) för rapporten |
+| **Phishing-resistent auth** | FIDO2/CTAP 2.2/WebAuthn och verifierad hårdvara |
+| **Fail-closed hårdvaruautentisering** | PAW–DEN UART challenge-response under `hardware/contact-auth/` |
+| **Secure by design** | Arkitekturbeslut i `docs/adr/` |
+| **Ramverk** | NIST CSF 2.0, SP 800-53r5, MITRE ATT&CK och CIS Controls v8 |
+| **Fullstack-säkerhet** | Python, Flask, kryptografi, SQLite och agentplattform |
+| **Hårdvarunära säkerhet** | RP2350, ESP32, UART, LoRa, USB HID och e-Paper |
+| **Användbar säkerhet** | Planerad utvärdering, se ticket #18 |
 
 ---
 
 ## Arkitektur (kort)
 
-- **PAW (Personal Access Wearable)** — Feather RP2350 + LoRa SX1262 + E-ink + button.
-- **FIDO Key** — ESP32-S3-Nano (PicoFIDO). Removable crypto module.
-- **Field Node** — Pico 2 W + LoRa SX1262 + relay. Mounted on machinery.
-- **Mama Bear** — Arduino UNO Q. Admin/provisioning hub (USB-serial only).
+- **PAW** — Feather RP2350, e-Paper och autentiseringsfirmware.
+- **DEN / Field Node** — Pico 2/RP2350 som fattar fail-closed åtkomstbeslut.
+- **FIDO Key** — ESP32-S3-Nano med PicoFIDO.
+- **Mama Bear** — lokal admin- och provisioneringsnod.
 
-```
-[PAW (RP2350)] ──(LoRa 868 MHz)──> [Field Node (Pico 2 W)] ──(GPIO)──> [Relay/Machine]
-       │
-  (USB-Serial)
-       │
-[FIDO Key (ESP32-S3)]
-```
-
-**No cloud. No WiFi. No BLE.** Radio + USB-serial only.
+Den aktiva hårdvaru-MVP:n använder dockad UART mellan PAW och DEN. LoRa är
+målarkitektur och sekundärt transportspår för bland annat närvaro, larm och
+framtida funktioner. Transportvalet får inte beskrivas som färdigverifierat utan
+att aktuell modul och dokumentation anges.
 
 ---
 
-## Demo — körbar på ett par kommandon
+## Demo
 
 ```bash
 cd demo
 python -m venv .venv && . .venv/bin/activate
 pip install flask webauthn cryptography cbor2 pytest
-../.venv/bin/python app.py          # webbserver på http://localhost:8000
+../.venv/bin/python app.py
 ```
-
-Sedan registrera en passkey i webbläsaren (roll `mama_bear` eller `cub`) och
-logga in. Med riktig hårdvara (ESP32 + pico-fido2) registreras brickan mot
-servern över USB HID.
 
 ```bash
-../.venv/bin/python -m pytest -q   # 9 tester (smoke + end-to-end)
+../.venv/bin/python -m pytest -q
 ```
-
-**Säkerhetsdetalj:** servern begär `DIRECT` attestation och rejectar
-mjukvarunycklar (`fmt=none`) när attestation krävs — credentialt bindas till
-en verifierad enhet.
 
 ---
 
@@ -85,27 +76,30 @@ en verifierad enhet.
 
 | Sökväg | Innehåll |
 | --- | --- |
-| `demo/` | WebAuthn auth-server (Flask) + mjukvaru-authenticator + tester |
-| `shallot-radio/` | LoRa radio-layer: protocol, state machines, relay controller |
-| `docs/adr/` | ADR 0001–0009 + domänmodell (GLOSSARY) |
+| `hardware/contact-auth/` | PAW, DEN, Mama Bear, UART-protokoll, CLI och hårdvarutester |
+| `demo/` | WebAuthn auth-server och tester |
+| `shallot-radio/` | LoRa-protokoll, state machines och relay controller |
+| `cub/` | Lokal agent, säkerhetsgrindar och integrationer |
+| `ansible/` | Lokal, fail-closed labbautomation |
+| `shallot-infra/` | Digestlåst containerreferens och runtimepolicy |
+| `docs/adr/` | Arkitekturbeslut och domänmodell |
 | `docs/HARDWARE-STATUS.md` | Inventering av faktisk hårdvara |
-| `docs/DEVELOPMENT-LOG.md` | Citerbar utvecklingslogg (referens för rapporten) |
-| `docs/research/picofido-ctap2-feasibility.md` | Forskning: PicoFIDO/CTAP2 |
-| `CONTEXT.md` | Domän, ramverk, hårdvara |
+| `docs/DEVELOPMENT-LOG.md` | Citerbar utvecklingslogg |
+| `CONTEXT.md` | Domän, ramverk och hårdvara |
 
 ---
 
 ## Status
 
-**Klart:** auth-server (register/login, roller), attestation-verifiering,
-validering mot riktig FIDO2-hårdvara, ADR:er, rollmodell, Cub-stack (Fedora/Python).
+**Klart:** WebAuthn-baseline, FIDO2-attestation, hårdvarunära UART-MVP,
+fail-closed PAW–DEN-tester, ADR:er, rollmodell och lokal Cub-stack.
 
-**Pågår / planerat:** Cub-agent (Python), Heartbeat/Transit över LoRa,
-utvärdering av usable security (#18), fysisk inkapsling.
+**Pågår:** konsolidering av contact-auth, PRO-45 testdrift, rootless Quadlet,
+backup/restore och fysisk verifiering av återstående säkerhetskontroller.
 
 ---
 
 ## Teknik
 
-Python · Flask · `webauthn` (FIDO2/CTAP 2.2/WebAuthn) · `cryptography` · `cbor2` ·
-SQLite · ESP32 / pico-fido2 · (planerat) LoRa SX1262.
+Python · Flask · WebAuthn/FIDO2/CTAP 2.2 · HMAC-SHA256 · Ed25519 · SQLite ·
+RP2350 · ESP32 · UART · LoRa SX1262 · rootless Podman · Ansible
