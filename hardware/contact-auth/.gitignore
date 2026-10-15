@@ -1,0 +1,38 @@
+# Build artifacts
+build/
+*.elf
+*.uf2
+*.hex
+*.bin
+
+# Arduino/PlatformIO
+.pio/
+.pioenvs/
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Secrets (nycklar, konfiguration med känslig data)
+*.key
+*.pem
+secrets.h
+config_local.h
+
+# Dev artifacts
+.trunk/
+shallot_cli.egg-info/
