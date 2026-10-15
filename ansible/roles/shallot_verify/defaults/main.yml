@@ -1,6 +1,9 @@
 ---
 shallot_verify_local_only: true
 shallot_verify_external_bootstrap_enabled: false
-shallot_verify_enforce_runtime_policy: false
+shallot_verify_enforce_runtime_policy: true
 shallot_verify_secrets_file: "{{ inventory_dir }}/group_vars/secrets.local.yml"
-shallot_verify_compose_reference: "{{ playbook_dir | dirname | dirname }}/shallot-infra/compose.yml"
+shallot_verify_compose_env_file: "{{ playbook_dir | dirname | dirname }}/shallot-infra/.env"
+shallot_verify_wazuh_internal_users_file: >-
+  {{ playbook_dir | dirname | dirname }}/shallot-infra/config/wazuh_indexer/internal_users.local.yml
+shallot_verify_policy_script: "{{ playbook_dir | dirname }}/scripts/check_runtime_policy.py"

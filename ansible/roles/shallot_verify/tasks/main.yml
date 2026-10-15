@@ -9,11 +9,7 @@
 
 - name: Inspect rootless Podman for verification
   ansible.builtin.command:
-    argv:
-      - podman
-      - info
-      - --format
-      - json
+    argv: [podman, info, --format, json]
   register: shallot_verify_podman_command
   changed_when: false
   failed_when: false
@@ -25,51 +21,66 @@
       - (shallot_verify_podman_command.stdout | from_json).host.security.rootless | bool
     fail_msg: Rootless Podman verification failed.
 
-- name: Inspect the optional local secrets file
+- name: Inspect optional local Ansible secrets file
   ansible.builtin.stat:
     path: "{{ shallot_verify_secrets_file }}"
   register: shallot_verify_secrets_stat
 
-- name: Require restrictive permissions for local secrets
+- name: Inspect optional Compose environment file
+  ansible.builtin.stat:
+    path: "{{ shallot_verify_compose_env_file }}"
+  register: shallot_verify_compose_env_stat
+
+- name: Inspect optional Wazuh internal users file
+  ansible.builtin.stat:
+    path: "{{ shallot_verify_wazuh_internal_users_file }}"
+  register: shallot_verify_wazuh_internal_users_stat
+
+- name: Require restrictive permissions for local secret files
   ansible.builtin.assert:
     that:
-      - shallot_verify_secrets_stat.stat.mode in ['0400', '0600']
-    fail_msg: >-
-      {{ shallot_verify_secrets_file }} must be readable only by its owner (0400 or 0600).
-  when: shallot_verify_secrets_stat.stat.exists
+      - item.stat.mode in ['0400', '0600']
+    fail_msg: "{{ item.stat.path }} must be readable only by its owner."
+  loop:
+    - "{{ shallot_verify_secrets_stat }}"
+    - "{{ shallot_verify_compose_env_stat }}"
+    - "{{ shallot_verify_wazuh_internal_users_stat }}"
+  when: item.stat.exists
+  no_log: true
 
-- name: Read the Compose development reference
-  ansible.builtin.slurp:
-    src: "{{ shallot_verify_compose_reference }}"
-  register: shallot_verify_compose_file
+- name: Run immutable runtime policy verification
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ shallot_verify_policy_script }}"
+      - --json
+  register: shallot_verify_policy_result
+  changed_when: false
+  failed_when: false
 
-- name: Record known runtime-policy findings
+- name: Parse runtime policy findings
   ansible.builtin.set_fact:
     shallot_verify_runtime_findings: >-
-      {{
-        ([] if ':latest' not in (shallot_verify_compose_file.content | b64decode) else
-          ['Compose reference contains unpinned :latest images'])
-        +
-        ([] if 'INDEXER_PASSWORD=admin' not in (shallot_verify_compose_file.content | b64decode) else
-          ['Compose reference contains the known Wazuh indexer default password'])
-      }}
+      {{ (shallot_verify_policy_result.stdout | from_json)['errors'] }}
+  when: (shallot_verify_policy_result.stdout | trim).startswith('{')
 
-- name: Report runtime-policy findings
-  ansible.builtin.debug:
-    var: shallot_verify_runtime_findings
+- name: Record policy execution failure
+  ansible.builtin.set_fact:
+    shallot_verify_runtime_findings:
+      - Runtime policy verifier failed before returning structured output
+  when: not (shallot_verify_policy_result.stdout | trim).startswith('{')
 
-- name: Enforce runtime policy when explicitly enabled
+- name: Enforce runtime policy
   ansible.builtin.assert:
     that:
+      - shallot_verify_policy_result.rc == 0
       - shallot_verify_runtime_findings | length == 0
-    fail_msg: "Runtime-policy findings must be resolved before enforcement is enabled."
+    fail_msg: "Runtime-policy findings: {{ shallot_verify_runtime_findings }}"
   when: shallot_verify_enforce_runtime_policy | bool
 
 - name: Collect local listening sockets without changing the host
   ansible.builtin.command:
-    argv:
-      - ss
-      - -lntup
+    argv: [ss, -lntup]
   register: shallot_verify_listening_sockets
   changed_when: false
   failed_when: false
@@ -79,6 +90,10 @@
     msg:
       - "Local-only boundary: PASS"
       - "Rootless Podman: PASS"
-      - "Secrets permissions: {{ 'PASS' if shallot_verify_secrets_stat.stat.exists else 'NOT CONFIGURED' }}"
-      - "Runtime policy: {{ 'PASS' if (shallot_verify_runtime_findings | length == 0) else 'AUDIT FINDINGS' }}"
+      - "Runtime image and secret policy: PASS"
+      - >-
+        Local secret files: {{ 'CONFIGURED' if
+        (shallot_verify_secrets_stat.stat.exists or
+        shallot_verify_compose_env_stat.stat.exists or
+        shallot_verify_wazuh_internal_users_stat.stat.exists) else 'NOT CONFIGURED' }}
       - "No services, external hosts, VPS systems, or physical SHALLOT devices were modified."

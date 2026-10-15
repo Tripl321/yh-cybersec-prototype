@@ -9,7 +9,7 @@ shallot_preflight_require_podman: true
 
 shallot_verify_local_only: true
 shallot_verify_external_bootstrap_enabled: false
-shallot_verify_enforce_runtime_policy: false
+shallot_verify_enforce_runtime_policy: true
 
 shallot_repo_root: "{{ playbook_dir | dirname | dirname }}"
 shallot_runtime_root: "{{ ansible_facts['env']['HOME'] }}/.local/share/shallot"
@@ -17,15 +17,13 @@ shallot_config_root: "{{ ansible_facts['env']['HOME'] }}/.config/shallot"
 shallot_quadlet_root: "{{ ansible_facts['env']['HOME'] }}/.config/containers/systemd"
 shallot_backup_root: "{{ ansible_facts['env']['HOME'] }}/.local/state/shallot/backups"
 shallot_verify_secrets_file: "{{ inventory_dir }}/group_vars/secrets.local.yml"
-shallot_verify_compose_reference: "{{ shallot_repo_root }}/shallot-infra/compose.yml"
+shallot_verify_compose_env_file: "{{ shallot_repo_root }}/shallot-infra/.env"
+shallot_verify_wazuh_internal_users_file: >-
+  {{ shallot_repo_root }}/shallot-infra/config/wazuh_indexer/internal_users.local.yml
+shallot_verify_policy_script: "{{ shallot_repo_root }}/ansible/scripts/check_runtime_policy.py"
 
 shallot_expected_loopback_ports:
   - 11434
-  - 55000
-  - 1514
-  - 1515
-  - 9200
   - 8000
   - 8888
   - 6767
-  - 3000

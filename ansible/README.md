@@ -1,68 +1,61 @@
 # SHALLOT Ansible baseline
 
-This directory contains the first reviewed baseline for issue #94. It validates a local CachyOS/Arch-family workstation before later roles add host hardening, rootless Quadlet units, backup, restore, and rollback.
+This directory contains the reviewed local-only Ansible baseline for issue #94.
+It validates the CachyOS/Arch workstation without installing packages, starting
+services, pulling images, contacting external hosts, or touching physical
+SHALLOT devices.
 
-## Current scope
+## Implemented
 
-Implemented:
-
-- Localhost-only inventory
-- Explicit block on external bootstrap
-- Ansible and OS-family validation
-- Non-root execution validation
-- Rootless Podman validation
-- Systemd user-manager validation
-- `/etc/subuid` and `/etc/subgid` validation
+- Localhost-only inventory and explicit external-bootstrap block
+- Ansible, OS, non-root, rootless Podman, systemd, subuid and subgid validation
 - Local secret-file permission validation
-- Audit detection for unpinned images and the current Wazuh default password
-- Proposed ADR for Ansible and rootless Quadlet
+- Machine-readable runtime image manifest
+- Mandatory digest pins for all enabled external images
+- CI and Ansible policy enforcement against mutable images and Wazuh defaults
+- Wazuh fail-closed profile requiring local password and security configuration
+- ADR 0011 for Ansible and rootless Quadlet
 
-Not implemented in this increment:
+## Runtime security policy
 
-- Package installation or host mutation
-- Quadlet generation
-- Firewall changes
-- Image or model downloads
-- Secret generation
-- Backup, restore, or rollback
-- Connections to external hosts or physical SHALLOT devices
+`shallot-infra/versions.yml` is the canonical image manifest. The Compose
+references must match it exactly. Normal validation never pulls those images.
 
-## Security boundary
+Wazuh is disabled by default. Enabling `wazuh-secure` requires local files that
+are git-ignored and mode `0600`. The indexer password and its local hash
+configuration must match. Creating those secrets is a separate reviewed
+bootstrap operation.
 
-The inventory contains localhost only and uses `ansible_connection: local`. Normal runs must not fetch external images or models. Real secrets must never be committed, pasted into issues, or included in command output.
+The former single Latitude image was inaccessible and has been removed from the
+runnable Compose definition. A correct official multi-service integration is a
+separate increment.
 
-Copy `inventory/lab/group_vars/secrets.example.yml` to the ignored `secrets.local.yml` only when a later implementation requires local secrets. Keep its permissions at `0600` or stricter.
+## Validation
 
-## Workstation commands
-
-Run from the repository root on the local workstation.
+Run from the repository root:
 
 ```fish
 cd ansible
-ansible-playbook playbooks/site.yml --check
+yamllint --config-file .yamllint.yml .
+ansible-lint --config-file .ansible-lint
+python scripts/check_runtime_policy.py
+ansible-playbook playbooks/site.yml --syntax-check
+ansible-playbook playbooks/verify.yml --syntax-check
 ```
 
-Run the non-mutating verification playbook separately:
+On the CachyOS workstation, run the non-mutating verification separately:
 
 ```fish
 cd ansible
 ansible-playbook playbooks/verify.yml
 ```
 
-The current site playbook performs validation only. It does not install packages, enable lingering, create services, pull images, or contact external systems.
+A second verification run must report `changed=0`.
 
-## Expected current finding
+## Local secrets
 
-The verification role reports audit findings while the Compose development reference still contains `:latest` images or the known Wazuh indexer default password. Enforcement remains disabled until those items are corrected in a separately reviewed change.
+- `inventory/lab/group_vars/secrets.local.yml`
+- `../shallot-infra/.env`
+- `../shallot-infra/config/wazuh_indexer/internal_users.local.yml`
 
-## Next reviewed increment
-
-After this baseline is approved:
-
-1. Add version and digest manifest.
-2. Replace known default credentials with required local secret injection.
-3. Add rootless Quadlet templates.
-4. Add systemd user-service verification.
-5. Add local backup, restore, and rollback roles.
-
-No security-critical change should be merged or executed against a real environment without human review.
+These files must never be committed and must use mode `0400` or `0600`.

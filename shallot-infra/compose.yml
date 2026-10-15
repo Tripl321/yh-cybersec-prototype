@@ -1,16 +1,9 @@
-# SHALLOT Infrastructure — Podman Compose
+# SHALLOT Infrastructure — Podman Compose development reference
 # ADR 0005: rootless Podman; ADR 0007: OSS stack
-#
-# Usage:
-#   podman compose up -d          # start all services
-#   podman compose logs -f cub    # follow cub-agent logs
-#   podman compose down           # stop all services
-#
-# Requires: podman >= 4.0, podman-compose or podman compose
-# All containers run rootless with drop caps, read-only rootfs, seccomp.
+# Immutable image identities are recorded in versions.yml.
+# Wazuh is disabled by default and requires an explicit secure profile.
 
 services:
-  # --- Cub Agent (LLM security agent) ---
   cub:
     build:
       context: ../cub
@@ -20,17 +13,12 @@ services:
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - CUB_CLOUD_ENABLED=0
-      - WAZUH_API_URL=http://wazuh:55000
-      - WAZUH_API_TOKEN=${WAZUH_API_TOKEN:-}
       - HANKO_API_URL=http://hanko:8000
       - SUPERMEMORY_API_URL=http://supermemory:6767
-      - LATITUDE_API_KEY=${LATITUDE_API_KEY:-}
-      - LATITUDE_PROJECT_SLUG=shallot
     networks:
       - shallot-internal
     depends_on:
       - ollama
-      - wazuh
       - hanko
     security_opt:
       - no-new-privileges:true
@@ -46,9 +34,8 @@ services:
       - cub-data:/var/lib/cub
       - cub-provenance:/var/lib/cub/provenance
 
-  # --- Ollama (local LLM inference) ---
   ollama:
-    image: ollama/ollama:latest
+    image: "ollama/ollama:0.40.5@sha256:5d3a2f25f9825628daba94dc0b1d421c7d57d6c03ae5faa9ba050e058bab8241"
     container_name: shallot-ollama
     restart: unless-stopped
     ports:
@@ -65,54 +52,8 @@ services:
       - SETUID
       - SETGID
 
-  # --- Wazuh (SIEM) ---
-  wazuh:
-    image: wazuh/wazuh-manager:4.9.0
-    container_name: shallot-wazuh
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:55000:55000"
-      - "127.0.0.1:1514:1514/udp"
-      - "127.0.0.1:1515:1515"
-    environment:
-      - INDEXER_URL=http://wazuh-indexer:9200
-      - INDEXER_USER=admin
-      - INDEXER_PASSWORD=admin
-    networks:
-      - shallot-internal
-    volumes:
-      - wazuh-data:/var/ossec/data
-      - wazuh-etc:/var/ossec/etc
-      - wazuh-logs:/var/ossec/logs
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-
-  # --- Wazuh Indexer (Elasticsearch-compatible) ---
-  wazuh-indexer:
-    image: wazuh/wazuh-indexer:4.9.0
-    container_name: shallot-wazuh-indexer
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9200:9200"
-    environment:
-      - discovery.type=single-node
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-    networks:
-      - shallot-internal
-    volumes:
-      - wazuh-indexer-data:/usr/share/wazuh-indexer/data
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - IPC_LOCK
-
-  # --- Hanko (WebAuthn/FIDO2 RP) ---
   hanko:
-    image: ghcr.io/teamhanko/hanko:latest
+    image: "ghcr.io/teamhanko/hanko:v3.1.2@sha256:51dd4b4d64106aec46b0850605fe86ea3349e82fac8b2d86b7653219c7ff7da3"
     container_name: shallot-hanko
     restart: unless-stopped
     ports:
@@ -130,9 +71,8 @@ services:
     cap_drop:
       - ALL
 
-  # --- Supermemory (persistent memory + RAG) ---
   supermemory:
-    image: supermemory/supermemory:latest
+    image: "supermemory/supermemory:0.0.9@sha256:557781468b448da518a0d45eacc0ff894bd7847769aa8a20023db2d51d6cef43"
     container_name: shallot-supermemory
     restart: unless-stopped
     ports:
@@ -146,20 +86,49 @@ services:
     cap_drop:
       - ALL
 
-  # --- Latitude (LLM observability) ---
-  latitude:
-    image: middayai/latitude:latest
-    container_name: shallot-latitude
+  wazuh-indexer:
+    profiles: ["wazuh-secure"]
+    image: "wazuh/wazuh-indexer:4.9.0@sha256:a7adcac99648b73e075c4fa8daa5bd552da46ec4a7700d7faccd579a2c5e7cc2"
+    container_name: shallot-wazuh-indexer
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:9200:9200"
     environment:
-      - LATITUDE_API_KEY=${LATITUDE_API_KEY:-}
-      - DATABASE_URL=sqlite:///var/lib/latitude/latitude.db
+      - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
     networks:
       - shallot-internal
     volumes:
-      - latitude-data:/var/lib/latitude
+      - wazuh-indexer-data:/usr/share/wazuh-indexer/data
+      - "./config/wazuh_indexer/internal_users.local.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK
+
+  wazuh:
+    profiles: ["wazuh-secure"]
+    image: "wazuh/wazuh-manager:4.9.0@sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004"
+    container_name: shallot-wazuh
+    restart: unless-stopped
+    depends_on:
+      - wazuh-indexer
+    ports:
+      - "127.0.0.1:55000:55000"
+      - "127.0.0.1:1514:1514/udp"
+      - "127.0.0.1:1515:1515"
+    environment:
+      - INDEXER_URL=http://wazuh-indexer:9200
+      - INDEXER_USERNAME=admin
+      - "INDEXER_PASSWORD=${WAZUH_INDEXER_PASSWORD:?WAZUH_INDEXER_PASSWORD is required}"
+    networks:
+      - shallot-internal
+    volumes:
+      - wazuh-data:/var/ossec/data
+      - wazuh-etc:/var/ossec/etc
+      - wazuh-logs:/var/ossec/logs
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -168,16 +137,15 @@ services:
 networks:
   shallot-internal:
     driver: bridge
-    internal: true  # No external access; all egress denied by default
+    internal: true
 
 volumes:
   cub-data:
   cub-provenance:
   ollama-data:
+  hanko-data:
+  supermemory-data:
   wazuh-data:
   wazuh-etc:
   wazuh-logs:
   wazuh-indexer-data:
-  hanko-data:
-  supermemory-data:
-  latitude-data:

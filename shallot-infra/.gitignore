@@ -1,0 +1,2 @@
+.env
+config/wazuh_indexer/internal_users.local.yml
