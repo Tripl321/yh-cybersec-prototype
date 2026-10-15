@@ -1,0 +1,7 @@
+---
+shallot_wazuh_bootstrap_enabled: false
+shallot_wazuh_bootstrap_allow_pull: false
+shallot_wazuh_bootstrap_script: "{{ playbook_dir | dirname }}/scripts/bootstrap_wazuh_credentials.py"
+shallot_wazuh_bootstrap_env_file: "{{ playbook_dir | dirname | dirname }}/shallot-infra/.env"
+shallot_wazuh_bootstrap_internal_users_file: >-
+  {{ playbook_dir | dirname | dirname }}/shallot-infra/config/wazuh_indexer/internal_users.local.yml
