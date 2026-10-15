@@ -1,0 +1,5 @@
+---
+# The bootstrap baseline intentionally uses ansible.builtin only.
+# Add external collections here with exact versions when a reviewed task requires them.
+collections: []
+roles: []

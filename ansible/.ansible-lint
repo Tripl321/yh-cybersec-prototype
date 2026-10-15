@@ -1,0 +1,10 @@
+---
+profile: production
+strict: true
+
+exclude_paths:
+  - .cache/
+  - inventory/lab/group_vars/secrets.local.yml
+
+mock_roles: []
+mock_modules: []

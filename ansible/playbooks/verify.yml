@@ -1,0 +1,10 @@
+---
+- name: Verify the local SHALLOT lab baseline
+  hosts: shallot_lab
+  gather_facts: true
+  become: false
+
+  roles:
+    - role: shallot_verify
+      tags:
+        - verify
