@@ -11,8 +11,11 @@ require the Compose references to match that manifest exactly.
 
 ## Wazuh security gate
 
-Wazuh is disabled by default behind the `wazuh-secure` profile. Do not enable it
-until both local files exist and have mode `0600`:
+Wazuh is absent from the default Compose stack. It exists only in the explicit
+`compose.wazuh.yml` overlay and remains gated by the `wazuh-secure` profile.
+This keeps the default stack independent of Wazuh secrets.
+
+Do not include the overlay until both local files exist and have mode `0600`:
 
 - `shallot-infra/.env`, containing a non-default `WAZUH_INDEXER_PASSWORD`
 - `shallot-infra/config/wazuh_indexer/internal_users.local.yml`, based on the
@@ -22,6 +25,18 @@ until both local files exist and have mode `0600`:
 The password in `.env` must match the local admin hash configuration. Neither
 file may be committed, printed in logs, issues, or chat. Creating the Wazuh
 security configuration is a separate human-reviewed bootstrap operation.
+
+A future approved start command will use both files explicitly, for example:
+
+```fish
+podman compose \
+    -f compose.yml \
+    -f compose.wazuh.yml \
+    --profile wazuh-secure \
+    up -d
+```
+
+Do not run that command during this increment.
 
 ## Latitude
 
@@ -39,5 +54,5 @@ Run from the repository root without starting containers:
 python ansible/scripts/check_runtime_policy.py
 ```
 
-Do not run `podman compose up`, enable `wazuh-secure`, or pull images as part of
-normal validation.
+Do not start containers, enable `wazuh-secure`, or pull images as part of normal
+validation.

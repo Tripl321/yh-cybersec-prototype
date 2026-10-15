@@ -9,22 +9,23 @@ SHALLOT devices.
 
 - Localhost-only inventory and explicit external-bootstrap block
 - Ansible, OS, non-root, rootless Podman, systemd, subuid and subgid validation
-- Local secret-file permission validation
+- Local secret-file permission and placeholder validation
 - Machine-readable runtime image manifest
 - Mandatory digest pins for all enabled external images
 - CI and Ansible policy enforcement against mutable images and Wazuh defaults
-- Wazuh fail-closed profile requiring local password and security configuration
+- Wazuh isolated in an explicit overlay and fail-closed profile
 - ADR 0011 for Ansible and rootless Quadlet
 
 ## Runtime security policy
 
-`shallot-infra/versions.yml` is the canonical image manifest. The Compose
-references must match it exactly. Normal validation never pulls those images.
+`shallot-infra/versions.yml` is the canonical image manifest. The default and
+Wazuh overlay references must match it exactly. Normal validation never pulls
+those images.
 
-Wazuh is disabled by default. Enabling `wazuh-secure` requires local files that
-are git-ignored and mode `0600`. The indexer password and its local hash
-configuration must match. Creating those secrets is a separate reviewed
-bootstrap operation.
+Wazuh is absent from the default Compose stack. The explicit overlay requires
+local files that are git-ignored and mode `0600`. Verification rejects default
+passwords and unchanged placeholders when those files exist. Creating the
+complete Wazuh security configuration remains a separate reviewed bootstrap.
 
 The former single Latitude image was inaccessible and has been removed from the
 runnable Compose definition. A correct official multi-service integration is a

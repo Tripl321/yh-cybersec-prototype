@@ -48,6 +48,41 @@
   when: item.stat.exists
   no_log: true
 
+- name: Read local Compose environment file for placeholder validation
+  ansible.builtin.slurp:
+    src: "{{ shallot_verify_compose_env_file }}"
+  register: shallot_verify_compose_env_content
+  when: shallot_verify_compose_env_stat.stat.exists
+  no_log: true
+
+- name: Reject missing, default, or placeholder Wazuh password
+  ansible.builtin.assert:
+    that:
+      - "'WAZUH_INDEXER_PASSWORD=' in (shallot_verify_compose_env_content.content | b64decode)"
+      - "'WAZUH_INDEXER_PASSWORD=admin' not in (shallot_verify_compose_env_content.content | b64decode)"
+      - "'WAZUH_INDEXER_PASSWORD=__SET_LOCALLY__' not in (shallot_verify_compose_env_content.content | b64decode)"
+    fail_msg: Local Wazuh password is missing, default, or unchanged.
+  when: shallot_verify_compose_env_stat.stat.exists
+  no_log: true
+
+- name: Read local Wazuh internal users file for placeholder validation
+  ansible.builtin.slurp:
+    src: "{{ shallot_verify_wazuh_internal_users_file }}"
+  register: shallot_verify_wazuh_internal_users_content
+  when: shallot_verify_wazuh_internal_users_stat.stat.exists
+  no_log: true
+
+- name: Reject incomplete Wazuh internal users configuration
+  ansible.builtin.assert:
+    that:
+      - "'admin:' in (shallot_verify_wazuh_internal_users_content.content | b64decode)"
+      - "'hash:' in (shallot_verify_wazuh_internal_users_content.content | b64decode)"
+      - "'__SET_LOCALLY__' not in (shallot_verify_wazuh_internal_users_content.content | b64decode)"
+      - "'<BCRYPT_HASH>' not in (shallot_verify_wazuh_internal_users_content.content | b64decode)"
+    fail_msg: Local Wazuh internal users configuration is incomplete.
+  when: shallot_verify_wazuh_internal_users_stat.stat.exists
+  no_log: true
+
 - name: Run immutable runtime policy verification
   ansible.builtin.command:
     argv:
