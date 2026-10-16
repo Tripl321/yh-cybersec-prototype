@@ -13,8 +13,9 @@ def test_mock_sign_verify_roundtrip():
 
 def test_mock_is_deterministic():
     b = be.MockBackend()
-    assert (b.sign(credential_id=b"c", signed_data=b"d")
-            == b.sign(credential_id=b"c", signed_data=b"d"))
+    first_signature = b.sign(credential_id=b"c", signed_data=b"d")
+    second_signature = b.sign(credential_id=b"c", signed_data=b"d")
+    assert first_signature == second_signature
 
 
 def test_mock_rejects_tampered_signature():
