@@ -336,7 +336,8 @@ def test_replay_during_resync_rejected():
     assert edge.wl.last == 120
     wire, paw_nonce, enc = _resp_vec(k_mac, k_enc, 0, live)
     ok, _ = edge.on_response(live, 0, paw_nonce, enc, wire[-8:], wire[:-8])
-    assert ok and edge.resyncs == 1
+    assert ok
+    assert edge.resyncs == 1
 
 
 def test_resync_requires_hmac():
@@ -399,7 +400,8 @@ def test_verdict_challenge_as_verdict_ignored():
     ok, reason = paw.on_packet(rx['msg_type'], rx['seq'], rx['nonce'],
                                rx['payload'], rx['hmac'], chal_body)
     assert not ok and reason == 'not-verdict'
-    assert paw.display is None and paw.outstanding == outstanding
+    assert paw.display is None
+    assert paw.outstanding == outstanding
 
 
 def test_verdict_wrong_nonce_ignored():
@@ -415,7 +417,8 @@ def test_verdict_wrong_nonce_ignored():
     ok, reason = paw.on_packet(rx['msg_type'], rx['seq'], rx['nonce'],
                                rx['payload'], rx['hmac'], wire[:-8])
     assert not ok and reason == 'bind'
-    assert paw.display is None and paw.outstanding == outstanding
+    assert paw.display is None
+    assert paw.outstanding == outstanding
     wire2, _ = _verdict_vec(k_mac, k_enc, 0x03, 51, os.urandom(8), outstanding)
     rx2 = parse_packet(wire2)
     ok, _ = paw.on_packet(rx2['msg_type'], rx2['seq'], rx2['nonce'],
