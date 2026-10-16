@@ -4,10 +4,12 @@ when:
     branch: main
 
 steps:
-  - name: lint-ansible
+  - name: validate-shallot
     image: python:3.13.7-slim-bookworm@sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d
     commands:
       - python -m pip install --disable-pip-version-check --no-cache-dir ansible-core==2.21.5 ansible-lint==26.10.0 yamllint==1.38.0
+      - python -m pip install --disable-pip-version-check --no-cache-dir -e './hardware/contact-auth[test]'
+      - python hardware/contact-auth/tools/check_pytest_baseline.py
       - cd ansible
       - yamllint --config-file .yamllint.yml .
       - python scripts/check_runtime_policy.py
