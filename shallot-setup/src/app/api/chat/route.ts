@@ -89,10 +89,8 @@ export async function POST(req: NextRequest) {
       const last = messages[messages.length - 1];
       const form = new FormData();
       form.append("message", last?.content ?? "");
-      // include simple session continuity
       const sessionId = req.headers.get("x-session-id") ?? undefined;
       if (sessionId) form.append("session_id", sessionId);
-      // stream disabled for simple MVP JSON response
       form.append("stream", "false");
       const upstream = await fetch(`${AGENTOS_URL}/teams/agno/runs`, {
         method: "POST",
@@ -101,7 +99,6 @@ export async function POST(req: NextRequest) {
       });
       if (upstream.ok) {
         const data = await upstream.json();
-        // AgentOS returns completed run synchronously when stream false; for MVP return final content as SSE tokens
         const content = typeof data.content === "string" ? data.content : JSON.stringify(data.content ?? "");
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
@@ -124,7 +121,12 @@ export async function POST(req: NextRequest) {
 
   try {
     return await ollamaStream(messages);
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500 });
+  } catch (error) {
+    const errorId = crypto.randomUUID();
+    console.error(`Chat upstream failure (${errorId})`, error);
+    return Response.json(
+      { error: "Chat service temporarily unavailable", errorId },
+      { status: 502 },
+    );
   }
 }
