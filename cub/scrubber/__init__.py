@@ -1,87 +1,88 @@
 """Ingress Scrubber (ADR 0006 / ADR 0007).
 
 Deterministic AES-SIV encryption of sensitive entities before they leave the
-perimeter. Surrogate-encoded values are re-mapped locally; the remapping
-table is excluded from the provenance log. Scrubbing runs regardless of the
-sensitivity label (default-deny).
+perimeter. Surrogate-encoded values are re-mapped locally; the remapping table
+is excluded from the provenance log. Scrubbing runs regardless of sensitivity.
 
-Implementation: AES-SIV via `cryptography` library. Deterministic — same
-entity always produces the same surrogate, so the LLM can track identity
-across calls. Reversible locally with the same key.
+Configured passphrases are converted to 64-byte AES-SIV keys with scrypt. When
+no passphrase is configured, a random process-local key is generated. That
+preserves scrubbing and in-process determinism without relying on a shared
+development key; surrogates intentionally change after restart.
 """
 from __future__ import annotations
 
 import base64
-import hashlib
 import re
-from pathlib import Path
+import secrets
 
 from cryptography.hazmat.primitives.ciphers.aead import AESSIV
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 from cub.config import CubConfig
 
-# Entity patterns to detect and scrub
 _IP_PATTERN = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _HOSTNAME_PATTERN = re.compile(r"\b[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}\b")
 _ASSET_TAG_PATTERN = re.compile(r"\b(?:SHALLOT|BRICKA|NODE)[-_]?\d+\b", re.IGNORECASE)
-_USERNAME_PATTERN = re.compile(r"\b(?:admin|operator|technician|cub|mama_bear)\b", re.IGNORECASE)
+_USERNAME_PATTERN = re.compile(
+    r"\b(?:admin|operator|technician|cub|mama_bear)\b", re.IGNORECASE
+)
+
+_KDF_SALT = b"SHALLOT-Cub-Scrubber-AES-SIV-v1"
+_MIN_PASSPHRASE_LENGTH = 16
 
 
 class IngressScrubber:
     """AES-SIV deterministic scrubber for sensitive entities.
 
-    Same input always produces same output (deterministic), but the output
-    is not reversible without the key. The remapping table is kept locally
-    and excluded from provenance logs (ADR 0006).
+    A configured passphrase provides stable surrogates across restarts. Without
+    one, a random process-local key keeps scrubbing fail-safe while avoiding a
+    repository-wide default secret.
     """
 
     def __init__(self, cfg: CubConfig) -> None:
         self.cfg = cfg
-        self._key = self._derive_key(cfg.scrubber_fpe_key or "shallot-default-dev-key")
+        if cfg.scrubber_fpe_key:
+            self._key = self._derive_key(cfg.scrubber_fpe_key)
+        else:
+            self._key = secrets.token_bytes(64)
         self._cipher = AESSIV(self._key)
         self._remap: dict[str, str] = {}
 
     @staticmethod
     def _derive_key(passphrase: str) -> bytes:
-        """Derive a 64-byte key from passphrase via SHA-512."""
-        return hashlib.sha512(passphrase.encode()).digest()
+        """Derive a 64-byte AES-SIV key with a memory-hard password KDF."""
+        if len(passphrase) < _MIN_PASSPHRASE_LENGTH:
+            raise ValueError("CUB_SCRUBBER_KEY must contain at least 16 characters")
+        kdf = Scrypt(salt=_KDF_SALT, length=64, n=2**15, r=8, p=1)
+        return kdf.derive(passphrase.encode("utf-8"))
 
     def _surrogate(self, entity: str) -> str:
         """Generate deterministic surrogate for an entity."""
         if entity in self._remap:
             return self._remap[entity]
 
-        # AES-SIV needs associated data; use entity type as AAD
         ciphertext = self._cipher.encrypt(entity.encode(), [b"entity"])
         surrogate = "SUR-" + base64url_encode(ciphertext[:12])
         self._remap[entity] = surrogate
         return surrogate
 
     def scrub(self, text: str) -> str:
-        """Scrub all detected entities in text.
-
-        Each entity type is replaced with a deterministic surrogate.
-        The same entity always produces the same surrogate.
-        """
+        """Scrub all detected entities in text."""
         result = text
 
-        # Scrub IPs
         for match in _IP_PATTERN.finditer(text):
             original = match.group()
             result = result.replace(original, self._surrogate(original))
 
-        # Scrub hostnames
         for match in _HOSTNAME_PATTERN.finditer(text):
             original = match.group()
             if not original.startswith("SUR-"):
                 result = result.replace(original, self._surrogate(original))
 
-        # Scrub asset tags
         for match in _ASSET_TAG_PATTERN.finditer(text):
             original = match.group()
             result = result.replace(original, self._surrogate(original))
 
-        # Scrub usernames
         for match in _USERNAME_PATTERN.finditer(text):
             original = match.group()
             result = result.replace(original, self._surrogate(original))
@@ -89,9 +90,9 @@ class IngressScrubber:
         return result
 
     def desurrogate(self, surrogate: str) -> str | None:
-        """Reverse a surrogate to original entity (local only)."""
-        for original, surr in self._remap.items():
-            if surr == surrogate:
+        """Reverse a surrogate to original entity in the current process."""
+        for original, mapped in self._remap.items():
+            if mapped == surrogate:
                 return original
         return None
 
