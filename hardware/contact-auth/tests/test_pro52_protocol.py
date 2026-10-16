@@ -134,7 +134,8 @@ def test_packet_roundtrip():
     pkt = parse_packet(wire)
     assert pkt is not None
     assert (pkt['msg_type'], pkt['seq']) == (0x02, 42)
-    assert pkt['sender_id'] == sender and pkt['nonce'] == nonce
+    assert pkt['sender_id'] == sender
+    assert pkt['nonce'] == nonce
     assert pkt['payload'] == payload
     assert pkt['hmac'] == hmac_trunc(k_mac, body)
 
@@ -173,7 +174,8 @@ def test_challenge_response_math():
                              os.urandom(8), rx['nonce'])
     resp = resp_body + hmac_trunc(k_mac, resp_body)
     rx2 = parse_packet(resp)
-    assert rx2 is not None and rx2['payload'] == rx['nonce']
+    assert rx2 is not None
+    assert rx2['payload'] == rx['nonce']
     assert hmac_module.compare_digest(hmac_trunc(k_mac, resp_body), rx2['hmac'])
 
 
@@ -331,7 +333,8 @@ def test_replay_during_resync_rejected():
     live = os.urandom(8)  # different live challenge
     ok, reason = edge.on_response(live, 5, old_paw_nonce, old_enc,
                                   old_wire[-8:], old_wire[:-8])
-    assert not ok and reason == 'bind'
+    assert not ok
+    assert reason == 'bind'
     assert edge.resyncs == 0  # replay must not move the window
     assert edge.wl.last == 120
     wire, paw_nonce, enc = _resp_vec(k_mac, k_enc, 0, live)
@@ -349,7 +352,8 @@ def test_resync_requires_hmac():
     live = os.urandom(8)
     ok, reason = edge.on_response(live, 0, os.urandom(8), os.urandom(8),
                                   os.urandom(8), os.urandom(29))
-    assert not ok and reason == 'hmac'
+    assert not ok
+    assert reason == 'hmac'
     assert edge.resyncs == 0
 
 
@@ -399,7 +403,8 @@ def test_verdict_challenge_as_verdict_ignored():
     rx = parse_packet(chal)
     ok, reason = paw.on_packet(rx['msg_type'], rx['seq'], rx['nonce'],
                                rx['payload'], rx['hmac'], chal_body)
-    assert not ok and reason == 'not-verdict'
+    assert not ok
+    assert reason == 'not-verdict'
     assert paw.display is None
     assert paw.outstanding == outstanding
 
@@ -416,14 +421,17 @@ def test_verdict_wrong_nonce_ignored():
     rx = parse_packet(wire)
     ok, reason = paw.on_packet(rx['msg_type'], rx['seq'], rx['nonce'],
                                rx['payload'], rx['hmac'], wire[:-8])
-    assert not ok and reason == 'bind'
+    assert not ok
+    assert reason == 'bind'
     assert paw.display is None
     assert paw.outstanding == outstanding
     wire2, _ = _verdict_vec(k_mac, k_enc, 0x03, 51, os.urandom(8), outstanding)
     rx2 = parse_packet(wire2)
     ok, _ = paw.on_packet(rx2['msg_type'], rx2['seq'], rx2['nonce'],
                           rx2['payload'], rx2['hmac'], wire2[:-8])
-    assert ok and paw.display == 'granted' and paw.outstanding is None
+    assert ok
+    assert paw.display == 'granted'
+    assert paw.outstanding is None
 
 
 def test_verdict_failure_bound():
@@ -437,7 +445,8 @@ def test_verdict_failure_bound():
     rx = parse_packet(wire)
     ok, _ = paw.on_packet(rx['msg_type'], rx['seq'], rx['nonce'],
                           rx['payload'], rx['hmac'], wire[:-8])
-    assert ok and paw.display == 'denied'
+    assert ok
+    assert paw.display == 'denied'
     ok, reason = paw.on_packet(rx['msg_type'], rx['seq'], rx['nonce'],
                                rx['payload'], rx['hmac'], wire[:-8])
     assert not ok  # consumed cycle: no double-act
@@ -456,6 +465,7 @@ def test_resync_source_guards():
     assert 'aes_ctr_crypt(keys.k_enc, pkt.seqNum, pkt.nonce, pkt.payload' in edge
     paw = (ROOT / 'id-kort/archive/paw-challenge-response-responder/paw-challenge-response.ino').read_text()
     assert 'seqWhitelist.resync(challenge.seqNum)' in paw
-    assert 'awaitingVerdict' in paw and 'outstandingNonce' in paw
+    assert 'awaitingVerdict' in paw
+    assert 'outstandingNonce' in paw
     assert 'verdict.msgType != MSG_SUCCESS && verdict.msgType != MSG_FAILURE' in paw
     assert 'verify_echo_binding(keys, verdict.payload' in paw
