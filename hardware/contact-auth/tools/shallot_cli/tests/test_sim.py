@@ -33,8 +33,12 @@ def test_expected_reason_codes():
 
 
 def test_deterministic():
-    assert sim.run_scenario("success") == sim.run_scenario("success")
-    assert sim.run_scenario("wrong-key") == sim.run_scenario("wrong-key")
+    first_success = sim.run_scenario("success")
+    second_success = sim.run_scenario("success")
+    first_wrong_key = sim.run_scenario("wrong-key")
+    second_wrong_key = sim.run_scenario("wrong-key")
+    assert first_success == second_success
+    assert first_wrong_key == second_wrong_key
 
 
 def test_unknown_scenario():
@@ -46,10 +50,10 @@ def test_render_banner_and_required_fields():
     for name in sim.SCENARIOS:
         text = sim.render(sim.run_scenario(name))
         assert "SIMULATED / TEST-ONLY" in text
-        assert sim.TEST_NONCE.hex() in text  # nonce visas
-        assert "CHALLENGE" in text and "RESPONSE" in text  # ramtyper visas
-        assert "DENIED" in text or "AUTHENTICATED" in text  # resultat visas
-        assert "fail closed" in text or "grant" in text  # beslut visas
+        assert sim.TEST_NONCE.hex() in text
+        assert "CHALLENGE" in text and "RESPONSE" in text
+        assert "DENIED" in text or "AUTHENTICATED" in text
+        assert "fail closed" in text or "grant" in text
 
 
 def test_no_secret_keys_in_output():
@@ -61,5 +65,5 @@ def test_no_secret_keys_in_output():
     ]
     for name in sim.SCENARIOS:
         text = sim.render(sim.run_scenario(name))
-        for s in secrets:
-            assert s not in text
+        for secret in secrets:
+            assert secret not in text
