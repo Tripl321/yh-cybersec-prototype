@@ -1,0 +1,83 @@
+---
+- name: Enforce local-only Wazuh credential bootstrap boundary
+  ansible.builtin.assert:
+    that:
+      - (ansible_connection | default('')) == 'local'
+      - inventory_hostname in ['localhost', '127.0.0.1']
+      - ansible_facts['user_uid'] | int != 0
+    fail_msg: Wazuh credential bootstrap may run only as a non-root local user.
+
+- name: Inspect existing Wazuh environment file
+  ansible.builtin.stat:
+    path: "{{ shallot_wazuh_bootstrap_env_file }}"
+  register: shallot_wazuh_bootstrap_env_stat
+
+- name: Inspect existing Wazuh internal users file
+  ansible.builtin.stat:
+    path: "{{ shallot_wazuh_bootstrap_internal_users_file }}"
+  register: shallot_wazuh_bootstrap_users_stat
+
+- name: Block implicit credential rotation
+  ansible.builtin.assert:
+    that:
+      - not shallot_wazuh_bootstrap_env_stat.stat.exists
+      - not shallot_wazuh_bootstrap_users_stat.stat.exists
+    fail_msg: Existing Wazuh credentials were found; rotation requires a separate reviewed operation.
+
+- name: Run Wazuh credential bootstrap preflight
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ shallot_wazuh_bootstrap_script }}"
+  changed_when: false
+
+- name: Require explicit approval for real credential generation
+  ansible.builtin.assert:
+    that:
+      - shallot_wazuh_bootstrap_enabled | bool
+    fail_msg: Set shallot_wazuh_bootstrap_enabled=true only after explicit human approval.
+  when: not ansible_check_mode
+
+- name: Report check-mode bootstrap boundary
+  ansible.builtin.debug:
+    msg: >-
+      CHECK-INFO: a real run would generate six unique Wazuh passwords and bcrypt
+      hashes locally. It would not start Wazuh or any other service.
+  when: ansible_check_mode
+
+- name: Generate local Wazuh credential files
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [ansible_playbook_python, shallot_wazuh_bootstrap_script, '--execute']
+        + (['--allow-pull'] if shallot_wazuh_bootstrap_allow_pull | bool else [])
+      }}
+  register: shallot_wazuh_bootstrap_result
+  changed_when: shallot_wazuh_bootstrap_result.rc == 0
+  when:
+    - not ansible_check_mode
+    - shallot_wazuh_bootstrap_enabled | bool
+  no_log: true
+
+- name: Verify generated Wazuh environment file
+  ansible.builtin.stat:
+    path: "{{ shallot_wazuh_bootstrap_env_file }}"
+  register: shallot_wazuh_bootstrap_generated_env
+  when: not ansible_check_mode
+
+- name: Verify generated Wazuh internal users file
+  ansible.builtin.stat:
+    path: "{{ shallot_wazuh_bootstrap_internal_users_file }}"
+  register: shallot_wazuh_bootstrap_generated_users
+  when: not ansible_check_mode
+
+- name: Require restrictive generated credential files
+  ansible.builtin.assert:
+    that:
+      - shallot_wazuh_bootstrap_generated_env.stat.exists
+      - shallot_wazuh_bootstrap_generated_env.stat.mode == '0600'
+      - shallot_wazuh_bootstrap_generated_users.stat.exists
+      - shallot_wazuh_bootstrap_generated_users.stat.mode == '0600'
+    fail_msg: Wazuh credential bootstrap did not create both mode-0600 files.
+  when: not ansible_check_mode
+  no_log: true

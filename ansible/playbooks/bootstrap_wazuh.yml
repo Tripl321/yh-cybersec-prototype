@@ -1,0 +1,10 @@
+---
+- name: Bootstrap local Wazuh credentials without starting runtime services
+  hosts: shallot_lab
+  gather_facts: true
+  become: false
+
+  roles:
+    - role: shallot_wazuh_bootstrap
+      tags:
+        - bootstrap_wazuh

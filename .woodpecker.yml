@@ -15,6 +15,8 @@ steps:
       - cd ansible
       - yamllint --config-file .yamllint.yml .
       - python scripts/check_runtime_policy.py
+      - python -m py_compile scripts/bootstrap_wazuh_credentials.py
       - ANSIBLE_CONFIG=./ansible.cfg ansible-lint --config-file .ansible-lint
       - ANSIBLE_CONFIG=./ansible.cfg ansible-playbook playbooks/site.yml --syntax-check
       - ANSIBLE_CONFIG=./ansible.cfg ansible-playbook playbooks/verify.yml --syntax-check
+      - ANSIBLE_CONFIG=./ansible.cfg ansible-playbook playbooks/bootstrap_wazuh.yml --syntax-check

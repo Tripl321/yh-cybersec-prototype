@@ -1,62 +1,67 @@
 # SHALLOT Ansible baseline
 
 This directory contains the reviewed local-only Ansible baseline for issue #94.
-It validates the CachyOS/Arch workstation without installing packages, starting
-services, pulling images, contacting external hosts, or touching physical
-SHALLOT devices.
+Normal validation installs nothing, starts no service, pulls no runtime image,
+and contacts no external host or physical SHALLOT device.
 
 ## Implemented
 
 - Localhost-only inventory and explicit external-bootstrap block
-- Ansible, OS, non-root, rootless Podman, systemd, subuid and subgid validation
-- Local secret-file permission and placeholder validation
-- Machine-readable runtime image manifest
-- Mandatory digest pins for all enabled external images
-- CI and Ansible policy enforcement against mutable images and Wazuh defaults
-- Wazuh isolated in an explicit overlay and fail-closed profile
-- ADR 0011 for Ansible and rootless Quadlet
+- Rootless Podman and workstation preflight verification
+- Digest-pinned runtime image manifest and enforced policy checks
+- Wazuh isolated in an explicit fail-closed Compose overlay
+- Local secret-file permissions and secret-format validation
+- Explicit Wazuh credential-bootstrap playbook
 
-## Runtime security policy
+## Wazuh credential bootstrap
 
-`shallot-infra/versions.yml` is the canonical image manifest. The default and
-Wazuh overlay references must match it exactly. Normal validation never pulls
-those images.
+`playbooks/bootstrap_wazuh.yml` creates credentials only. It never starts Wazuh
+or any other service. The real run:
 
-Wazuh is absent from the default Compose stack. The explicit overlay requires
-local files that are git-ignored and mode `0600`. Verification rejects default
-passwords and unchanged placeholders when those files exist. Creating the
-complete Wazuh security configuration remains a separate reviewed bootstrap.
+- generates six unique URL-safe passwords,
+- hashes each password with Wazuh 4.9.0's official `hash.sh`,
+- uses the digest-pinned Wazuh indexer image with networking disabled,
+- writes `.env` and `internal_users.local.yml` atomically with mode `0600`,
+- refuses to overwrite existing credential files,
+- suppresses all task output with `no_log`.
 
-The former single Latitude image was inaccessible and has been removed from the
-runnable Compose definition. A correct official multi-service integration is a
-separate increment.
+Check mode is local and non-mutating:
+
+```fish
+cd ansible
+ansible-playbook playbooks/bootstrap_wazuh.yml --check
+```
+
+A real bootstrap requires explicit human approval and both flags:
+
+```fish
+ansible-playbook playbooks/bootstrap_wazuh.yml \
+    -e shallot_wazuh_bootstrap_enabled=true \
+    -e shallot_wazuh_bootstrap_allow_pull=true
+```
+
+Do not run the real command until the PR is reviewed. The pull flag permits only
+the already digest-pinned Wazuh indexer image. No secret is printed.
+
+## Remaining Wazuh blockers
+
+Credential generation does not make the Wazuh runtime production-ready. TLS
+certificates, indexer security application, runtime health verification, backup,
+and rollback remain separate reviewed increments. `compose.wazuh.yml` must not
+be started before those controls are implemented.
 
 ## Validation
-
-Run from the repository root:
 
 ```fish
 cd ansible
 yamllint --config-file .yamllint.yml .
 ansible-lint --config-file .ansible-lint
 python scripts/check_runtime_policy.py
+python -m py_compile scripts/bootstrap_wazuh_credentials.py
 ansible-playbook playbooks/site.yml --syntax-check
 ansible-playbook playbooks/verify.yml --syntax-check
+ansible-playbook playbooks/bootstrap_wazuh.yml --syntax-check
 ```
 
-On the CachyOS workstation, run the non-mutating verification separately:
-
-```fish
-cd ansible
-ansible-playbook playbooks/verify.yml
-```
-
-A second verification run must report `changed=0`.
-
-## Local secrets
-
-- `inventory/lab/group_vars/secrets.local.yml`
-- `../shallot-infra/.env`
-- `../shallot-infra/config/wazuh_indexer/internal_users.local.yml`
-
-These files must never be committed and must use mode `0400` or `0600`.
+On the CachyOS workstation, normal verification must remain idempotent with
+`changed=0`.
