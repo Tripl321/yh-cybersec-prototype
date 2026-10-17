@@ -121,7 +121,7 @@ def hash_password(reference: str, password: str) -> str:
         "bash",
         reference,
         "-lc",
-        f'test -x {HASH_TOOL} && exec {HASH_TOOL} -p "$SHALLOT_WAZUH_PASSWORD"',
+        'export JAVA_HOME=/usr/share/wazuh-indexer/jdk; export PATH="$JAVA_HOME/bin:/usr/bin:/bin"; ' f'test -x {HASH_TOOL} && exec {HASH_TOOL} -p "$SHALLOT_WAZUH_PASSWORD"',
     ]
     result = subprocess.run(
         command,
