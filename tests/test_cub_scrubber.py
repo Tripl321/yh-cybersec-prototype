@@ -16,8 +16,9 @@ def test_scrypt_key_is_deterministic_and_separated():
 
 
 def test_short_configured_passphrase_is_rejected():
+    config = CubConfig(scrubber_fpe_key="too-short")
     with pytest.raises(ValueError, match="at least 16"):
-        IngressScrubber(CubConfig(scrubber_fpe_key="too-short"))
+        IngressScrubber(config)
 
 
 def test_missing_passphrase_uses_unique_process_local_keys():
