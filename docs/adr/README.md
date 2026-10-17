@@ -10,3 +10,4 @@ Korta beslutsanteckningar. Format: se `.agents/skills/domain-modeling/ADR-FORMAT
 - [0012-consolidate-contact-auth-repository](0012-consolidate-contact-auth-repository.md) — Ett kanoniskt SHALLOT-repo med kontakt-autentisering under `hardware/contact-auth/`.
 
 Se även [GLOSSARY.md](GLOSSARY.md) för domänmodellen.
+- [0013-wazuh-tls-identity](0013-wazuh-tls-identity.md) — Wazuh TLS-identitet och verifieringsgräns.
