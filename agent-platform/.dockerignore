@@ -1,0 +1,28 @@
+# Version control and local configuration
+.git
+.gitignore
+.env
+.env.*
+
+# Python environments and caches
+.venv*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local runtime and generated data
+tmp/
+build/
+dist/
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation, tests, and developer-only files
+README.md
+LICENSE
+example.env
+scripts/*
+!scripts/entrypoint.sh

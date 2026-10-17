@@ -4,13 +4,22 @@
 FROM agnohq/python:3.14
 
 # ---------------------------------------------------------------------------
-# Application code
+# Application dependencies
 # ---------------------------------------------------------------------------
 WORKDIR /app
 ENV PYTHONPATH=/app
 COPY requirements.txt ./
 RUN uv pip sync requirements.txt --system
-COPY . .
+
+# Copy only reviewed runtime code. Do not copy the repository context, local
+# environment files, caches, databases, tests, or developer tooling.
+COPY agents ./agents
+COPY app ./app
+COPY db ./db
+COPY evals ./evals
+COPY teams ./teams
+COPY workflows ./workflows
+COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
 
 # ---------------------------------------------------------------------------
 # Entrypoint
