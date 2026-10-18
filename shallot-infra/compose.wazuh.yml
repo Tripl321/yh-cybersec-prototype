@@ -16,7 +16,7 @@ services:
       - shallot-internal
     volumes:
       - wazuh-indexer-data:/usr/share/wazuh-indexer/data
-      - "./config/wazuh_indexer/internal_users.local.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
+      - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/internal_users.local.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
     security_opt:
       - no-new-privileges:true
     cap_drop:
