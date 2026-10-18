@@ -70,11 +70,15 @@ def validate() -> list[str]:
     indexer = wazuh_services.get("wazuh-indexer", {})
     if "wazuh-secure" not in indexer.get("profiles", []):
         errors.append("Wazuh indexer is not gated by the wazuh-secure profile")
-    internal_users_mount = (
-        "./config/wazuh_indexer/internal_users.local.yml:"
+    internal_users_destination = (
         "/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
     )
-    if internal_users_mount not in indexer.get("volumes", []):
+    internal_users_mounts = indexer.get("volumes", [])
+    if not any(
+        isinstance(mount, str)
+        and mount.endswith(internal_users_destination)
+        for mount in internal_users_mounts
+    ):
         errors.append("Wazuh indexer lacks the local internal_users mount")
 
     if "latitude" in services:
