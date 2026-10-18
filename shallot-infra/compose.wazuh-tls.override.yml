@@ -1,0 +1,44 @@
+# Explicit local-only TLS overlay. Opt-in; never start implicitly.
+# Requires certificates under the local SHALLOT TLS directory.
+services:
+  wazuh-indexer:
+    environment:
+      - plugins.security.ssl.transport.pemcert_filepath=/etc/wazuh-tls/wazuh-indexer.crt
+      - plugins.security.ssl.transport.pemkey_filepath=/etc/wazuh-tls/wazuh-indexer.key
+      - plugins.security.ssl.transport.pemtrustedcas_filepath=/etc/wazuh-tls/ca.crt
+      - plugins.security.ssl.http.enabled=true
+      - plugins.security.ssl.http.pemcert_filepath=/etc/wazuh-tls/wazuh-indexer.crt
+      - plugins.security.ssl.http.pemkey_filepath=/etc/wazuh-tls/wazuh-indexer.key
+      - plugins.security.ssl.http.pemtrustedcas_filepath=/etc/wazuh-tls/ca.crt
+      - plugins.security.ssl.http.enabled_protocols=TLSv1.2,TLSv1.3
+      - plugins.security.ssl.http.clientauth_mode=OPTIONAL
+    volumes:
+      - type: bind
+        source: /home/johannes/.local/share/shallot/wazuh-tls/ca.crt
+        target: /etc/wazuh-tls/ca.crt
+        read_only: true
+      - type: bind
+        source: /home/johannes/.local/share/shallot/wazuh-tls/wazuh-indexer.crt
+        target: /etc/wazuh-tls/wazuh-indexer.crt
+        read_only: true
+      - type: bind
+        source: /home/johannes/.local/share/shallot/wazuh-tls/wazuh-indexer.key
+        target: /etc/wazuh-tls/wazuh-indexer.key
+        read_only: true
+  wazuh:
+    environment:
+      - INDEXER_URL=https://wazuh-indexer:9200
+      - INDEXER_SSL_VERIFY=true
+    volumes:
+      - type: bind
+        source: /home/johannes/.local/share/shallot/wazuh-tls/ca.crt
+        target: /etc/wazuh-tls/ca.crt
+        read_only: true
+      - type: bind
+        source: /home/johannes/.local/share/shallot/wazuh-tls/manager/wazuh-manager.crt
+        target: /etc/wazuh-tls/wazuh-manager.crt
+        read_only: true
+      - type: bind
+        source: /home/johannes/.local/share/shallot/wazuh-tls/manager/wazuh-manager.key
+        target: /etc/wazuh-tls/wazuh-manager.key
+        read_only: true
