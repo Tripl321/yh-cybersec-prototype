@@ -51,3 +51,37 @@ The official flow must be validated first with:
 
 Remove only the generated local certificate directory and any isolated runtime
 resources. Do not modify the committed repository or existing credential files.
+
+## Verified findings
+
+The following local tests were performed against the digest-pinned Wazuh
+4.9.0 indexer image:
+
+- Direct host bind-mounts to `/etc/wazuh-indexer/certs` failed.
+- Host-staged read-only bind-mounts to the same path failed.
+- Wazuh-generated certificate filenames and paths also failed when mounted
+  from the host.
+- Every failed indexer start reported:
+  `java.security.AccessControlException: FilePermission ... indexer.pem read`.
+- Rootless named-volume staging failed because the init container could not
+  change ownership and permissions on the named volume.
+- The official certificate tool could not run inside the read-only Wazuh image:
+  it attempted to write its log and the image did not provide OpenSSL.
+- The official script was subsequently run with host OpenSSL; certificate
+  chain and key matching passed, but indexer startup remained blocked by the
+  Java SecurityManager.
+- No `securityadmin.sh` apply was performed.
+- No Wazuh manager was started.
+- All failed runtime resources were removed after each test.
+
+## Current status
+
+This increment is blocked for the Wazuh 4.9.0 rootless-container layout.
+The repository must not claim that the current TLS overlay is a working runtime
+configuration.
+
+Further work requires a separately reviewed deployment strategy that places
+the certificates inside a Java-policy-compatible image or container-owned
+filesystem before OpenSearch Security starts. Disabling the Java SecurityManager,
+making private keys world-readable, or applying broad policy permissions is
+not an accepted workaround.
