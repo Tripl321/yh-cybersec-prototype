@@ -1,5 +1,5 @@
 # Explicit local-only TLS overlay. Opt-in; never start implicitly.
-# Requires certificates under the local SHALLOT TLS directory.
+# Requires SHALLOT_WAZUH_TLS_DIR to point to local TLS material.
 services:
   wazuh-indexer:
     environment:
@@ -14,31 +14,22 @@ services:
       - plugins.security.ssl.http.clientauth_mode=OPTIONAL
     volumes:
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/ca.crt
+        source: ${SHALLOT_WAZUH_TLS_DIR}/ca.crt
         target: /etc/wazuh-indexer/certs/root-ca.pem
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/wazuh-indexer.crt
+        source: ${SHALLOT_WAZUH_TLS_DIR}/wazuh-indexer.crt
         target: /etc/wazuh-indexer/certs/indexer.pem
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/wazuh-indexer.key
+        source: ${SHALLOT_WAZUH_TLS_DIR}/wazuh-indexer.key
         target: /etc/wazuh-indexer/certs/indexer-key.pem
         read_only: true
-  wazuh:
-    environment:
-      - INDEXER_URL=https://wazuh-indexer:9200
-      - INDEXER_SSL_VERIFY=true
-    volumes:
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/ca.crt
-        target: /etc/wazuh-indexer/certs/root-ca.pem
+        source: ${SHALLOT_WAZUH_TLS_DIR}/admin/admin.crt
+        target: /etc/wazuh-indexer/certs/admin.pem
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/manager/wazuh-manager.crt
-        target: /etc/wazuh-tls/wazuh-manager.crt
-        read_only: true
-      - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/manager/wazuh-manager.key
-        target: /etc/wazuh-tls/wazuh-manager.key
+        source: ${SHALLOT_WAZUH_TLS_DIR}/admin/admin.key
+        target: /etc/wazuh-indexer/certs/admin-key.pem
         read_only: true
