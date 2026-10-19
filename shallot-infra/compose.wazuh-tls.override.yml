@@ -1,35 +1,30 @@
 # Explicit local-only TLS overlay. Opt-in; never start implicitly.
-# Requires SHALLOT_WAZUH_TLS_DIR to point to local TLS material.
+# Strategy B (ADR 0015): the wrapper stages certificates from
+# SHALLOT_WAZUH_TLS_INPUT_DIR (official wazuh-certs-tool layout) into the
+# container-owned path.conf directory, and a corrected opensearch.yml points
+# the SSL settings at that directory. Env-based SSL settings are inert in this
+# image (rpm distribution, no env->-E conversion). No certificate or key is
+# bind-mounted.
 services:
   wazuh-indexer:
+    # keepid maps the host user to container UID 1000, so the wrapper can read
+    # the read-only host input directory and stage into the image user's own
+    # 0700 path.conf without any capabilities (cap_drop ALL is preserved).
+    userns_mode: keep-id
+    entrypoint:
+      - /usr/local/bin/wazuh-indexer-runtime-wrapper.sh
     environment:
-      - plugins.security.ssl.transport.pemcert_filepath=/etc/wazuh-indexer/certs/indexer.pem
-      - plugins.security.ssl.transport.pemkey_filepath=/etc/wazuh-indexer/certs/indexer-key.pem
-      - plugins.security.ssl.transport.pemtrustedcas_filepath=/etc/wazuh-indexer/certs/root-ca.pem
-      - plugins.security.ssl.http.enabled=true
-      - plugins.security.ssl.http.pemcert_filepath=/etc/wazuh-indexer/certs/indexer.pem
-      - plugins.security.ssl.http.pemkey_filepath=/etc/wazuh-indexer/certs/indexer-key.pem
-      - plugins.security.ssl.http.pemtrustedcas_filepath=/etc/wazuh-indexer/certs/root-ca.pem
-      - plugins.security.ssl.http.enabled_protocols=TLSv1.2,TLSv1.3
-      - plugins.security.ssl.http.clientauth_mode=OPTIONAL
+      - WAZUH_TLS_INPUT_DIR=/run/wazuh-tls-input
     volumes:
       - type: bind
-        source: ${SHALLOT_WAZUH_TLS_DIR}/ca.crt
-        target: /etc/wazuh-indexer/certs/root-ca.pem
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}
+        target: /run/wazuh-tls-input
         read_only: true
       - type: bind
-        source: ${SHALLOT_WAZUH_TLS_DIR}/wazuh-indexer.crt
-        target: /etc/wazuh-indexer/certs/indexer.pem
+        source: ./config/wazuh_indexer/opensearch.yml
+        target: /usr/share/wazuh-indexer/opensearch.yml
         read_only: true
       - type: bind
-        source: ${SHALLOT_WAZUH_TLS_DIR}/wazuh-indexer.key
-        target: /etc/wazuh-indexer/certs/indexer-key.pem
-        read_only: true
-      - type: bind
-        source: ${SHALLOT_WAZUH_TLS_DIR}/admin/admin.crt
-        target: /etc/wazuh-indexer/certs/admin.pem
-        read_only: true
-      - type: bind
-        source: ${SHALLOT_WAZUH_TLS_DIR}/admin/admin.key
-        target: /etc/wazuh-indexer/certs/admin-key.pem
+        source: ../ansible/scripts/wazuh-indexer-runtime-wrapper.sh
+        target: /usr/local/bin/wazuh-indexer-runtime-wrapper.sh
         read_only: true

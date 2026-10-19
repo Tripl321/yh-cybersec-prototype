@@ -12,7 +12,8 @@ def test_wrapper_requires_explicit_input_directory():
 def test_wrapper_uses_image_certificate_layout():
     for name in ("root-ca.pem", "indexer.pem", "indexer-key.pem", "admin.pem", "admin-key.pem"):
         assert name in TEXT
-    assert "CERT_ROOT=/etc/wazuh-indexer/certs" in TEXT
+    assert "CERT_ROOT=/usr/share/wazuh-indexer/certs" in TEXT
+    assert "CERT_ROOT=/etc/wazuh-indexer/certs" not in TEXT
 
 
 def test_wrapper_never_logs_secret_contents():
@@ -23,7 +24,17 @@ def test_wrapper_never_logs_secret_contents():
 def test_wrapper_stages_restrictive_modes_and_ownership():
     assert "[indexer-key.pem]=0600" in TEXT
     assert "[admin-key.pem]=0600" in TEXT
-    assert "install -o 1000 -g 0" in TEXT
+    assert 'install -m "$mode" "$source" "$target"' in TEXT
+    assert "-o 1000" not in TEXT
+
+
+def test_wrapper_refuses_to_stage_as_root():
+    assert 'if [[ "$(id -u)" == "0" ]]' in TEXT
+    assert "must run as the image user, not root" in TEXT
+
+
+def test_wrapper_normalizes_stat_mode_output():
+    assert 'expected="${FILES[$name]#0}"' in TEXT
 
 
 def test_wrapper_executes_original_entrypoint_only_after_validation():

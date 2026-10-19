@@ -11,7 +11,8 @@ services:
       - "127.0.0.1:9200:9200"
     environment:
       - discovery.type=single-node
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      # 4.9.0 needs ~291MB direct buffer memory; 512m heap OOMs (measured).
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
     networks:
       - shallot-internal
     volumes:
