@@ -28,3 +28,6 @@ def test_wrapper_stages_restrictive_modes_and_ownership():
 
 def test_wrapper_executes_original_entrypoint_only_after_validation():
     assert TEXT.rfind("exec \"$WAZUH_ORIGINAL_ENTRYPOINT\"") > TEXT.rfind("unexpected mode")
+
+def test_wrapper_uses_nested_admin_input_directory():
+    assert 'WAZUH_TLS_INPUT_DIR/admin/$name' in TEXT
