@@ -53,7 +53,8 @@ done
 
 for name in "${!FILES[@]}"; do
   target="$CERT_ROOT/$name"
-  expected="${FILES[$name]}"
+  # stat prints "644"; the table uses "0644". Strip the leading zero.
+  expected="${FILES[$name]#0}"
   actual="$(stat -c "%a" "$target")"
   [[ "$actual" == "$expected" ]] || {
     echo "unexpected mode for $name: $actual" >&2

@@ -37,6 +37,10 @@ def test_wrapper_stages_restrictive_modes_and_ownership():
     assert "install -o 1000 -g 0" in TEXT
 
 
+def test_wrapper_normalizes_stat_mode_output():
+    assert 'expected="${FILES[$name]#0}"' in TEXT
+
+
 def test_wrapper_executes_original_entrypoint_only_after_validation():
     assert TEXT.rfind("exec \"$WAZUH_ORIGINAL_ENTRYPOINT\"") > TEXT.rfind("unexpected mode")
 
