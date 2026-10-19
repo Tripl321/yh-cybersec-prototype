@@ -16,16 +16,6 @@ def test_wrapper_uses_image_certificate_layout():
     assert "CERT_ROOT=/etc/wazuh-indexer/certs" not in TEXT
 
 
-def test_wrapper_links_legacy_conf_into_path_conf():
-    assert 'ln -s /usr/share/wazuh-indexer "$LEGACY_CONF"' in TEXT
-    assert 'readlink -f "$LEGACY_CONF"' in TEXT
-
-
-def test_wrapper_rejects_foreign_legacy_conf():
-    assert "is not a symlink to /usr/share/wazuh-indexer" in TEXT
-    assert TEXT.rfind("is not a symlink") < TEXT.rfind('exec "$WAZUH_ORIGINAL_ENTRYPOINT"')
-
-
 def test_wrapper_never_logs_secret_contents():
     assert "cat \"$source\"" not in TEXT
     assert "echo \"$source\"" not in TEXT
@@ -34,7 +24,13 @@ def test_wrapper_never_logs_secret_contents():
 def test_wrapper_stages_restrictive_modes_and_ownership():
     assert "[indexer-key.pem]=0600" in TEXT
     assert "[admin-key.pem]=0600" in TEXT
-    assert "install -o 1000 -g 0" in TEXT
+    assert 'install -m "$mode" "$source" "$target"' in TEXT
+    assert "-o 1000" not in TEXT
+
+
+def test_wrapper_refuses_to_stage_as_root():
+    assert 'if [[ "$(id -u)" == "0" ]]' in TEXT
+    assert "must run as the image user, not root" in TEXT
 
 
 def test_wrapper_normalizes_stat_mode_output():
