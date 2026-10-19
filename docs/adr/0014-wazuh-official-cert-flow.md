@@ -23,11 +23,16 @@ logs, issue text, Compose files, or container image layers.
 
 ## Required official layout
 
-- `/etc/wazuh-indexer/certs/root-ca.pem`
-- `/etc/wazuh-indexer/certs/indexer.pem`
-- `/etc/wazuh-indexer/certs/indexer-key.pem`
-- `/etc/wazuh-indexer/certs/admin.pem`
-- `/etc/wazuh-indexer/certs/admin-key.pem`
+Superseded by ADR 0015: the certificate directory is
+`/usr/share/wazuh-indexer/certs` (`path.conf`), not `/etc/wazuh-indexer/certs`.
+The original requirement below was taken from the image default
+`opensearch.yml` and is the recorded cause of the AccessControlException.
+
+- `/usr/share/wazuh-indexer/certs/root-ca.pem`
+- `/usr/share/wazuh-indexer/certs/indexer.pem`
+- `/usr/share/wazuh-indexer/certs/indexer-key.pem`
+- `/usr/share/wazuh-indexer/certs/admin.pem`
+- `/usr/share/wazuh-indexer/certs/admin-key.pem`
 
 The generated files must be owned/readable for the image’s `wazuh-indexer`
 process while preserving private-key confidentiality.
