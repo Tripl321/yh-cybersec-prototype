@@ -24,7 +24,14 @@ fi
 install -d -m 0750 -o 1000 -g 0 "$CERT_ROOT"
 
 for name in "${!FILES[@]}"; do
-  source="$WAZUH_TLS_INPUT_DIR/$name"
+  case "$name" in
+    admin.pem|admin-key.pem)
+      source="$WAZUH_TLS_INPUT_DIR/admin/$name"
+      ;;
+    *)
+      source="$WAZUH_TLS_INPUT_DIR/$name"
+      ;;
+  esac
   target="$CERT_ROOT/$name"
   mode="${FILES[$name]}"
   [[ -f "$source" ]] || { echo "missing TLS input: $name" >&2; exit 1; }
