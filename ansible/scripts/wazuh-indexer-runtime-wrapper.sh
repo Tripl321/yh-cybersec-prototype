@@ -6,7 +6,10 @@ set -euo pipefail
 
 : "${WAZUH_TLS_INPUT_DIR:?WAZUH_TLS_INPUT_DIR is required}"
 : "${WAZUH_ORIGINAL_ENTRYPOINT:=/entrypoint.sh}"
-CERT_ROOT=/etc/wazuh-indexer/certs
+# path.conf (/usr/share/wazuh-indexer) is the only certificate directory the
+# OpenSearch SecurityManager grants read access to (ADR 0015).
+CERT_ROOT=/usr/share/wazuh-indexer/certs
+LEGACY_CONF=/etc/wazuh-indexer
 
 declare -A FILES=(
   [root-ca.pem]=0644
@@ -18,6 +21,16 @@ declare -A FILES=(
 
 if [[ "$(id -u)" != "0" ]]; then
   echo "wrapper must start as root to stage into the container-owned filesystem" >&2
+  exit 1
+fi
+
+# The image default opensearch.yml references /etc/wazuh-indexer/certs.
+# FilePermission compares canonical paths, so a symlink into path.conf keeps
+# those references policy-readable without a policy change (ADR 0015).
+if [[ ! -e "$LEGACY_CONF" ]]; then
+  ln -s /usr/share/wazuh-indexer "$LEGACY_CONF"
+elif [[ "$(readlink -f "$LEGACY_CONF")" != "/usr/share/wazuh-indexer" ]]; then
+  echo "$LEGACY_CONF exists and is not a symlink to /usr/share/wazuh-indexer" >&2
   exit 1
 fi
 

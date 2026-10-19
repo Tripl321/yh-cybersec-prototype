@@ -12,7 +12,18 @@ def test_wrapper_requires_explicit_input_directory():
 def test_wrapper_uses_image_certificate_layout():
     for name in ("root-ca.pem", "indexer.pem", "indexer-key.pem", "admin.pem", "admin-key.pem"):
         assert name in TEXT
-    assert "CERT_ROOT=/etc/wazuh-indexer/certs" in TEXT
+    assert "CERT_ROOT=/usr/share/wazuh-indexer/certs" in TEXT
+    assert "CERT_ROOT=/etc/wazuh-indexer/certs" not in TEXT
+
+
+def test_wrapper_links_legacy_conf_into_path_conf():
+    assert 'ln -s /usr/share/wazuh-indexer "$LEGACY_CONF"' in TEXT
+    assert 'readlink -f "$LEGACY_CONF"' in TEXT
+
+
+def test_wrapper_rejects_foreign_legacy_conf():
+    assert "is not a symlink to /usr/share/wazuh-indexer" in TEXT
+    assert TEXT.rfind("is not a symlink") < TEXT.rfind('exec "$WAZUH_ORIGINAL_ENTRYPOINT"')
 
 
 def test_wrapper_never_logs_secret_contents():
