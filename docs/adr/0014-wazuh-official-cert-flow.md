@@ -85,6 +85,11 @@ This increment is blocked for the Wazuh 4.9.0 rootless-container layout.
 The repository must not claim that the current TLS overlay is a working runtime
 configuration.
 
+Resolved by ADR 0015: runtime probes on 2026-10-19 showed that the required
+certificate directory is `${OPENSEARCH_PATH_CONF}/certs`, not
+`/etc/wazuh-indexer/certs`, and the overlay was replaced by wrapper-based
+staging with a corrected `opensearch.yml`.
+
 Further work requires a separately reviewed deployment strategy that places
 the certificates inside a Java-policy-compatible image or container-owned
 filesystem before OpenSearch Security starts. Disabling the Java SecurityManager,

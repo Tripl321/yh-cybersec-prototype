@@ -50,22 +50,35 @@ certificate files.
 2. The secret-free runtime wrapper stages the files there at container start,
    before the original entrypoint runs. The destination is the container
    writable layer, never a host bind mount and never a named volume.
-3. The wrapper starts as container root (Compose sets `user: "0:0"`), reads
-   the read-only input directory, installs files with owner `1000:0` and the
-   existing mode table (private keys `0600`), then execs the original
-   entrypoint, which drops to `1000:0`.
-4. For the image default `opensearch.yml`, the wrapper creates the
-   compatibility symlink `/etc/wazuh-indexer -> /usr/share/wazuh-indexer` when
-   `/etc/wazuh-indexer` does not exist. Java `FilePermission` compares
-   canonical paths, so reads through the symlink resolve into the granted
-   directory. This symlink behavior is a runtime verification item.
-5. Host bind mounts of certificate files into the indexer are not a verified
+3. The wrapper runs as the image user (UID 1000) under
+   `userns_mode: keep-id`, which maps the host user to the same container
+   UID so the read-only host input directory stays readable. It refuses to
+   run as root. No capabilities are needed: `/usr/share/wazuh-indexer` is
+   `0700` owned `1000:1000` in the image, so the wrapper can create
+   `certs/` in its own path.conf directory and the base Compose
+   `cap_drop: ALL` stays in force. Staged files end up owned `1000:1000`
+   with the existing mode table (private keys `0600`), and the original
+   entrypoint executes directly as UID 1000.
+4. The certificate path strings in `opensearch.yml` must also live under
+   `path.conf`. The image default `opensearch.yml` references
+   `/etc/wazuh-indexer/certs`; a corrected copy of the file (see
+   `shallot-infra/config/wazuh_indexer/opensearch.yml`) is bind-mounted
+   read-only, as in the official deployment model. A symlink from
+   `/etc/wazuh-indexer` does **not** work: the runtime probe showed that the
+   `FilePermission` check uses the literal configured path. Environment-based
+   SSL settings are also inert in this image because
+   `OPENSEARCH_DISTRIBUTION_TYPE` is `rpm`, so the image's env-to-`-E`
+   conversion never runs.
+5. The corrected `opensearch.yml` sets `discovery.type: single-node` and drops
+   `cluster.initial_master_nodes`, because the image's env override for
+   `discovery.type` is inert and the two settings are mutually exclusive.
+6. Host bind mounts of certificate files into the indexer are not a verified
    runtime path and are removed from the TLS overlay.
 
 Strategies A (secret-free local image build) and C (official deployment model)
 are recorded as follow-up options. Strategy A bakes only an empty
-`${OPENSEARCH_PATH_CONF}/certs` directory and the compatibility symlink, with
-no key material in image layers.
+`${OPENSEARCH_PATH_CONF}/certs` directory, with no key material in image
+layers.
 
 ## Required layout
 
@@ -75,14 +88,17 @@ no key material in image layers.
 - `/usr/share/wazuh-indexer/certs/admin.pem`
 - `/usr/share/wazuh-indexer/certs/admin-key.pem` (mode `0600`)
 
-Owner `1000:0` for all five files. The host input directory uses the official
-`wazuh-certs-tool.sh` layout, including the nested `admin/` directory.
+Owner `1000:1000` for all five files. The host input directory uses the
+official `wazuh-certs-tool.sh` layout, including the nested `admin/`
+directory.
 
 ## Safety boundary
 
 This ADR does not generate certificates, start the indexer or the manager,
 apply indexer security, build or pull images, contact external hosts, or push
 or merge branches. Each of those steps requires separate explicit approval.
+Indexer-only runtime probes were performed on 2026-10-19 under explicit human
+approval; see Runtime evidence.
 
 ## Verification
 
@@ -96,9 +112,57 @@ Static, before any runtime step:
 Runtime, only after explicit approval:
 
 1. Start the indexer alone and confirm the OpenSearch Security init passes the
-   certificate read.
-2. Confirm the compatibility symlink canonicalizes into `path.conf`.
-3. Confirm private keys are not readable by other UIDs.
+   certificate read. (Done; see Runtime evidence.)
+2. Confirm private keys are not readable by other UIDs. (Done; see Runtime
+   evidence.)
+
+## Runtime evidence
+
+Probe series on 2026-10-19, rootless Podman, indexer only, no
+`securityadmin.sh`, no manager, explicit human approval per start:
+
+1. Wrapper staging plus a `/etc/wazuh-indexer` symlink, image default
+   `opensearch.yml`: `AccessControlException` on the literal path
+   `/etc/wazuh-indexer/certs/indexer.pem`. Symlinks do not satisfy the check.
+2. SSL environment overrides to `path.conf`: identical
+   `AccessControlException`. The env-to-`-E` conversion in `bin/opensearch`
+   is gated on `OPENSEARCH_DISTRIBUTION_TYPE=docker`; the image sets `rpm`.
+3. Corrected `opensearch.yml` with `path.conf` certificate paths, 256m heap:
+   certificate read passed (SSLConfig initialized). JVM died with
+   `OutOfMemoryError` on direct buffer memory.
+4. 512m heap: same direct-buffer OOM (needs ~291 MB).
+5. 1g heap plus `discovery.type: single-node` and without
+   `cluster.initial_master_nodes`: indexer started, cluster health GREEN,
+   security index initialized automatically (no `securityadmin.sh`), HTTPS
+   answered on 127.0.0.1:9200.
+6. Wrapper staging as container root with the Compose `cap_drop: ALL`:
+   `install` failed with `Permission denied` on
+   `/usr/share/wazuh-indexer`, which the image sets to `0700` owned
+   `1000:1000`. Root without `DAC_OVERRIDE` cannot traverse it. This
+   motivated decision item 3: stage as the image user under `keep-id`.
+7. Final configuration, committed wrapper plus corrected `opensearch.yml`,
+   `userns_mode: keep-id`, `cap_drop: ALL` plus `IPC_LOCK`, 1g heap: cluster
+   health GREEN, HTTPS answered, and no `AccessControlException`. Verified
+   after start: served certificate `CN=wazuh-indexer.local` with SAN exactly
+   `DNS:wazuh-indexer.local, DNS:localhost, IP:127.0.0.1`; staged keys mode
+   `0600` and public material `0644`, all owner `1000:1000`; the JVM process
+   UID from `/proc` was `1000`; no key material in logs.
+
+Post-run verification in step 5:
+
+- Served certificate: `CN=wazuh-indexer.local`, SAN exactly
+  `DNS:wazuh-indexer.local, DNS:localhost, IP:127.0.0.1`, issued by the local
+  SHALLOT lab CA.
+- Staged files: `indexer-key.pem` and `admin-key.pem` mode `0600`, public
+  material `0644`, all owner `1000:0`.
+- No key material in container logs (0 matches for `PRIVATE KEY`).
+- Probe container, probe input copies, and probe configuration were removed
+  afterwards; the pre-existing local TLS material was not modified.
+
+Residual limitation: the DN of the lab certificates does not match the
+`authcz.admin_dn` and `nodes_dn` values in the corrected `opensearch.yml`
+(those still carry the Wazuh defaults). Single-node startup does not require
+the match; admin-client verification will.
 
 ## Rollback
 
@@ -111,7 +175,10 @@ artifacts created for a test. Do not modify committed credentials.
   SecurityManager policy change is needed.
 - Private keys never appear in image layers, Git, logs, or host-visible
   process paths.
-- Container start runs the wrapper as root inside the rootless namespace; the
-  original entrypoint drops privileges before OpenSearch starts.
-- The compatibility symlink depends on Java canonical-path comparison and must
-  be confirmed at runtime.
+- Container start never uses UID 0: the wrapper and the indexer both run as
+  the image user under `keep-id`, and the base `cap_drop: ALL` remains in
+  force.
+- The corrected `opensearch.yml` is a maintained copy of the image default;
+  image upgrades require re-checking it against the new default.
+- Environment-based OpenSearch settings are inert in this image, so
+  configuration changes must go through `opensearch.yml`.
