@@ -58,3 +58,9 @@ def test_config_is_single_node_without_initial_master_nodes():
 def test_config_contains_no_secrets():
     assert "PRIVATE KEY" not in CONFIG_TEXT
     assert "password" not in CONFIG_TEXT.lower()
+
+
+def test_config_dn_matches_lab_ca():
+    assert 'CN=admin,O=SHALLOT Local Lab,C=SE' in CONFIG_TEXT
+    assert 'CN=wazuh-indexer.local,O=SHALLOT Local Lab,C=SE' in CONFIG_TEXT
+    assert "OU=Wazuh" not in CONFIG_TEXT

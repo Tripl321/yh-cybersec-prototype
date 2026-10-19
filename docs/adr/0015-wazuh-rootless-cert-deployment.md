@@ -159,10 +159,12 @@ Post-run verification in step 5:
 - Probe container, probe input copies, and probe configuration were removed
   afterwards; the pre-existing local TLS material was not modified.
 
-Residual limitation: the DN of the lab certificates does not match the
-`authcz.admin_dn` and `nodes_dn` values in the corrected `opensearch.yml`
-(those still carry the Wazuh defaults). Single-node startup does not require
-the match; admin-client verification will.
+Follow-up on 2026-10-19: `authcz.admin_dn` and `nodes_dn` in the corrected
+`opensearch.yml` were aligned to the lab CA (`CN=admin,O=SHALLOT Local Lab,C=SE`
+and `CN=wazuh-indexer.local,O=SHALLOT Local Lab,C=SE`). Re-verified rootless
+(`keep-id`, `cap_drop: ALL`): cluster GREEN, and an admin-client request with
+the lab admin certificate returned HTTP 200 on `https://127.0.0.1:9200/`.
+No certificate or key was regenerated.
 
 ## Rollback
 

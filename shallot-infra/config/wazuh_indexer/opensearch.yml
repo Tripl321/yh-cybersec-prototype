@@ -24,12 +24,16 @@ plugins.security.ssl.http.enabled: true
 plugins.security.ssl.transport.enforce_hostname_verification: false
 plugins.security.ssl.transport.resolve_hostname: false
 
+# DNs match the local SHALLOT lab CA material (ADR 0013 identity,
+# wazuh-indexer.local). The Wazuh defaults (OU=Wazuh,O=Wazuh,L=California)
+# do not match that CA; runtime verification on 2026-10-19 showed single-node
+# startup does not require a match, but admin-client access does.
 plugins.security.authcz.admin_dn:
-- "CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US"
+- "CN=admin,O=SHALLOT Local Lab,C=SE"
 plugins.security.check_snapshot_restore_write_privileges: true
 plugins.security.enable_snapshot_restore_privilege: true
 plugins.security.nodes_dn:
-- "CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US"
+- "CN=wazuh-indexer.local,O=SHALLOT Local Lab,C=SE"
 plugins.security.restapi.roles_enabled:
 - "all_access"
 - "security_rest_api_access"
