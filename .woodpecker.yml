@@ -11,12 +11,12 @@ steps:
       - python -m pip install --disable-pip-version-check --no-cache-dir -e './hardware/contact-auth[test]'
       - python hardware/contact-auth/tools/check_pytest_baseline.py
       - python -m pytest tests/test_cub_scrubber.py -q
-      - python -m pytest tests/test_wazuh_tls_overlay.py tests/test_wazuh_runtime_wrapper.py tests/test_wazuh_manager_runtime.py tests/test_wazuh_bootstrap_credentials.py -q
+      - python -m pytest tests/test_wazuh_tls_overlay.py tests/test_wazuh_runtime_wrapper.py tests/test_wazuh_manager_runtime.py tests/test_wazuh_bootstrap_credentials.py tests/test_wazuh_agent_compose.py -q
       - python -c "from pathlib import Path; assert 'COPY . .' not in Path('agent-platform/Dockerfile').read_text()"
       - cd ansible
       - yamllint --config-file .yamllint.yml .
       - python scripts/check_runtime_policy.py
-      - python -m py_compile scripts/bootstrap_wazuh_credentials.py
+      - python -m py_compile scripts/bootstrap_wazuh_credentials.py scripts/prepare_wazuh_agent.py
       - ANSIBLE_CONFIG=./ansible.cfg ansible-lint --config-file .ansible-lint
       - ANSIBLE_CONFIG=./ansible.cfg ansible-playbook playbooks/site.yml --syntax-check
       - ANSIBLE_CONFIG=./ansible.cfg ansible-playbook playbooks/verify.yml --syntax-check

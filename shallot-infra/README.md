@@ -93,6 +93,42 @@ podman-compose \
     down
 ```
 
+## Wazuh agent container
+
+`compose.wazuh-agent.override.yml` adds the agent (ADR 0018). There is no
+official agent image for 4.9.0, so the agent runs the pinned manager image and
+takes its binaries from the official agent package. The package is unpinned by
+default, so the tree is built once and reused.
+
+The tree lives outside the repository, because it holds the enrollment key:
+
+```fish
+python ansible/scripts/prepare_wazuh_agent.py \
+    --target "$HOME/.local/share/shallot/wazuh-agent"
+```
+
+The script checks the package against `versions.yml`, keeps the enrollment key
+and the agent name across runs, and refuses a target inside the repository.
+The agent name is derived from the target path, so the same tree always
+enrolls as the same agent.
+
+An approved start command adds the agent overlay and the tree directory:
+
+```fish
+SHALLOT_WAZUH_AGENT_DIR="$HOME/.local/share/shallot/wazuh-agent" \
+podman-compose \
+    -f compose.yml \
+    -f compose.wazuh.yml \
+    -f compose.wazuh-tls.override.yml \
+    -f compose.wazuh-agent.override.yml \
+    --profile wazuh-secure \
+    up -d wazuh-indexer wazuh wazuh-agent
+```
+
+The agent reaches the manager by its service name on the compose network and
+reports over TCP 1514. Without `SHALLOT_WAZUH_AGENT_DIR` the start fails
+instead of running an empty tree.
+
 ## Latitude
 
 The former `middayai/latitude:latest` reference is not publicly accessible and
