@@ -135,6 +135,13 @@ Probe series on 2026-10-19, rootless Podman, indexer only, no
    `cluster.initial_master_nodes`: indexer started, cluster health GREEN,
    security index initialized automatically (no `securityadmin.sh`), HTTPS
    answered on 127.0.0.1:9200.
+   Correction on 2026-10-21: the security index was in fact **not**
+   initialized. The image entrypoint runs `securityadmin.sh` only in a
+   commented-out block, and the plugin creates the index only with
+   `plugins.security.allow_default_init_securityindex: true`, which the
+   corrected `opensearch.yml` lacked. The GREEN cluster health above was
+   an unsecured cluster. The flag is now set, matching the official
+   Wazuh 4.9.0 single-node config (ADR 0016).
 6. Wrapper staging as container root with the Compose `cap_drop: ALL`:
    `install` failed with `Permission denied` on
    `/usr/share/wazuh-indexer`, which the image sets to `0700` owned

@@ -14,6 +14,11 @@ environment variables (`INDEXER_URL`, `FILEBEAT_SSL_VERIFICATION_MODE`,
 init script `1-config-filebeat`. The manager hop to the indexer was still
 plaintext.
 
+The first runtime start of this increment also showed that the corrected
+`opensearch.yml` copy lacked `plugins.security.allow_default_init_securityindex`,
+so the security index was never created and the indexer ran unsecured. The
+official single-node config sets that flag; the copy now does too.
+
 ## Decision
 
 1. Manager TLS lives only in the opt-in overlay

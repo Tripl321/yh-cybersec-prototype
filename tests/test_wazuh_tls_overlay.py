@@ -61,6 +61,10 @@ def test_config_is_single_node_without_initial_master_nodes():
     assert "initial_master_nodes" not in CONFIG_TEXT
 
 
+def test_config_allows_default_security_index_init():
+    assert "plugins.security.allow_default_init_securityindex: true" in CONFIG_TEXT
+
+
 def test_config_contains_no_secrets():
     assert "PRIVATE KEY" not in CONFIG_TEXT
     assert "password" not in CONFIG_TEXT.lower()
