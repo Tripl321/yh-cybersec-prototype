@@ -23,6 +23,8 @@ services:
     volumes:
       - wazuh-indexer-data:/usr/share/wazuh-indexer/data
       - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/internal_users.local.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
+      - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/roles_mapping.yml:/usr/share/wazuh-indexer/opensearch-security/roles_mapping.yml:ro"
+      - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/roles.yml:/usr/share/wazuh-indexer/opensearch-security/roles.yml:ro"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -51,6 +53,10 @@ services:
       - wazuh-data:/var/ossec/data
       - wazuh-etc:/var/ossec/etc
       - wazuh-logs:/var/ossec/logs
+      - type: bind
+        source: ../shallot-infra/scripts/05-fix-wazuh-uid.sh
+        target: /usr/local/bin/fix-wazuh-uid.sh
+        read_only: true
     # The manager image starts as root and its init copies the permanent data
     # into the volumes, then drops to the wazuh user. Under rootless Podman
     # that needs keep-id and the ownership capabilities; the image entrypoint

@@ -36,6 +36,8 @@ services:
     # verification fails.
     environment:
       - INDEXER_URL=https://wazuh-indexer.local:9200
+      - INDEXER_USERNAME=filebeat
+      - "INDEXER_PASSWORD=${WAZUH_FILEBEAT_PASSWORD:?WAZUH_FILEBEAT_PASSWORD is required}"
       - FILEBEAT_SSL_VERIFICATION_MODE=full
       - SSL_CERTIFICATE_AUTHORITIES=/etc/ssl/root-ca.pem
       - SSL_CERTIFICATE=/etc/ssl/filebeat.pem
