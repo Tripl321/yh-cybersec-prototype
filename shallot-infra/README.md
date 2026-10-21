@@ -67,12 +67,23 @@ Wazuh services, for example:
 
 ```fish
 SHALLOT_WAZUH_TLS_INPUT_DIR="$HOME/.local/share/shallot/wazuh-tls-input" \
-podman compose \
+podman-compose \
     -f compose.yml \
     -f compose.wazuh.yml \
     -f compose.wazuh-tls.override.yml \
     --profile wazuh-secure \
     up -d wazuh-indexer wazuh
+```
+
+`podman-compose` is used because the Docker Compose plugin needs a running
+Podman API socket. Teardown:
+
+```fish
+podman-compose \
+    -f compose.yml \
+    -f compose.wazuh.yml \
+    -f compose.wazuh-tls.override.yml \
+    down
 ```
 
 Do not run that command during this increment.

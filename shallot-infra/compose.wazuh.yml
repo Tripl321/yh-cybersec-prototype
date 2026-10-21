@@ -51,7 +51,20 @@ services:
       - wazuh-data:/var/ossec/data
       - wazuh-etc:/var/ossec/etc
       - wazuh-logs:/var/ossec/logs
+    # The manager image starts as root and its init copies the permanent data
+    # into the volumes, then drops to the wazuh user. Under rootless Podman
+    # that needs keep-id and the ownership capabilities; the image entrypoint
+    # runs securityadmin only in a commented-out block.
+    userns_mode: keep-id
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+      - SYS_CHROOT
+      - KILL
