@@ -54,9 +54,12 @@ services:
       - wazuh-data:/var/ossec/data
       - wazuh-etc:/var/ossec/etc
       - wazuh-logs:/var/ossec/logs
+      # s6-overlay runs cont-init.d scripts in name order, so this lands after
+      # 0-wazuh-init (which chowns to the old UID) and before 2-manager (which
+      # starts the daemons).
       - type: bind
-        source: ../shallot-infra/scripts/05-fix-wazuh-uid.sh
-        target: /usr/local/bin/fix-wazuh-uid.sh
+        source: ./scripts/0-wazuh-uid.sh
+        target: /etc/cont-init.d/0-wazuh-uid.sh
         read_only: true
     # The manager image starts as root and its init copies the permanent data
     # into the volumes, then drops to the wazuh user. Under rootless Podman

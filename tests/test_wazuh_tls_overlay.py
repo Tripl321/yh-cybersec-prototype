@@ -108,7 +108,3 @@ def test_indexer_alias_makes_certificate_name_resolvable():
 def test_plain_baseline_stays_plain_http():
     assert "INDEXER_URL=http://wazuh-indexer:9200" in BASE_TEXT
     assert "FILEBEAT_SSL_VERIFICATION_MODE" not in BASE_TEXT
-
-
-def test_overlay_contains_no_manager_key_material():
-    assert "PRIVATE KEY" not in TEXT

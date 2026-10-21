@@ -14,3 +14,4 @@ Se även [GLOSSARY.md](GLOSSARY.md) för domänmodellen.
 - [0014-wazuh-official-cert-flow](0014-wazuh-official-cert-flow.md) — Officiell certifikatflödesgräns.
 - [0015-wazuh-rootless-cert-deployment](0015-wazuh-rootless-cert-deployment.md) — Rootless certifieringsstrategi B.
 - [0016-wazuh-manager-tls](0016-wazuh-manager-tls.md) — Manager till indexer över TLS med värdnamnsverifiering.
+- [0017-wazuh-agent-enrollment-and-uid-mapping](0017-wazuh-agent-enrollment-and-uid-mapping.md) — Agentregistrering, port 1514 och UID-mappning under keep-id.

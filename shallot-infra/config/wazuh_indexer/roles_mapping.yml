@@ -1,7 +1,4 @@
 ---
-# In this file users, backendroles and hosts can be mapped to Wazuh indexer Security roles.
-# Permissions for Wazuh indexer roles are configured in roles.yml
-
 _meta:
   type: "rolesmapping"
   config_version: 2

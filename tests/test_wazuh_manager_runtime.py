@@ -21,3 +21,14 @@ def test_manager_keeps_capabilities_the_image_init_needs():
     ):
         assert f"- {capability}" in MANAGER
     assert "cap_drop:\n      - ALL" in MANAGER
+
+
+def test_manager_runs_uid_fix_from_cont_init():
+    assert "source: ./scripts/0-wazuh-uid.sh" in MANAGER
+    assert "target: /etc/cont-init.d/0-wazuh-uid.sh" in MANAGER
+
+
+def test_uid_fix_script_is_executable():
+    script = Path("shallot-infra/scripts/0-wazuh-uid.sh")
+    assert script.exists()
+    assert script.stat().st_mode & 0o111
