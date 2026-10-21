@@ -38,6 +38,45 @@ podman compose \
 
 Do not run that command during this increment.
 
+## Wazuh TLS overlay
+
+`compose.wazuh-tls.override.yml` adds the indexer certificate staging
+(ADR 0015) and the manager-to-indexer TLS hop (ADR 0016). It is opt-in and
+never starts anything by itself.
+
+The certificate input directory follows the official `wazuh-certs-tool`
+layout and must be supplied explicitly:
+
+```
+$SHALLOT_WAZUH_TLS_INPUT_DIR/
+  root-ca.pem
+  indexer.pem
+  indexer-key.pem
+  admin/admin.pem
+  admin/admin-key.pem
+  filebeat/filebeat.pem
+  filebeat/filebeat-key.pem
+```
+
+The manager reaches the indexer as `https://wazuh-indexer.local:9200`, which
+matches the indexer certificate SAN. The name resolves through the compose
+network alias on the indexer service.
+
+A future approved start command will use both overlays and only the two
+Wazuh services, for example:
+
+```fish
+SHALLOT_WAZUH_TLS_INPUT_DIR="$HOME/.local/share/shallot/wazuh-tls-input" \
+podman compose \
+    -f compose.yml \
+    -f compose.wazuh.yml \
+    -f compose.wazuh-tls.override.yml \
+    --profile wazuh-secure \
+    up -d wazuh-indexer wazuh
+```
+
+Do not run that command during this increment.
+
 ## Latitude
 
 The former `middayai/latitude:latest` reference is not publicly accessible and

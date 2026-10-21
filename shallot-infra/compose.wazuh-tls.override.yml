@@ -28,3 +28,28 @@ services:
         source: ../ansible/scripts/wazuh-indexer-runtime-wrapper.sh
         target: /usr/local/bin/wazuh-indexer-runtime-wrapper.sh
         read_only: true
+
+  wazuh:
+    # Official wazuh-docker 4.9.0 model: the manager image configures filebeat
+    # from these variables (init script 1-config-filebeat). The indexer name
+    # must match the certificate SAN (DNS:wazuh-indexer.local) or full
+    # verification fails.
+    environment:
+      - INDEXER_URL=https://wazuh-indexer.local:9200
+      - FILEBEAT_SSL_VERIFICATION_MODE=full
+      - SSL_CERTIFICATE_AUTHORITIES=/etc/ssl/root-ca.pem
+      - SSL_CERTIFICATE=/etc/ssl/filebeat.pem
+      - SSL_KEY=/etc/ssl/filebeat.key
+    volumes:
+      - type: bind
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}/root-ca.pem
+        target: /etc/ssl/root-ca.pem
+        read_only: true
+      - type: bind
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}/filebeat/filebeat.pem
+        target: /etc/ssl/filebeat.pem
+        read_only: true
+      - type: bind
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}/filebeat/filebeat-key.pem
+        target: /etc/ssl/filebeat.key
+        read_only: true

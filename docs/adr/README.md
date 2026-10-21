@@ -11,3 +11,6 @@ Korta beslutsanteckningar. Format: se `.agents/skills/domain-modeling/ADR-FORMAT
 
 Se även [GLOSSARY.md](GLOSSARY.md) för domänmodellen.
 - [0013-wazuh-tls-identity](0013-wazuh-tls-identity.md) — Wazuh TLS-identitet och verifieringsgräns.
+- [0014-wazuh-official-cert-flow](0014-wazuh-official-cert-flow.md) — Officiell certifikatflödesgräns.
+- [0015-wazuh-rootless-cert-deployment](0015-wazuh-rootless-cert-deployment.md) — Rootless certifieringsstrategi B.
+- [0016-wazuh-manager-tls](0016-wazuh-manager-tls.md) — Manager till indexer över TLS med värdnamnsverifiering.

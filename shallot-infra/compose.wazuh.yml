@@ -14,7 +14,12 @@ services:
       # 4.9.0 needs ~291MB direct buffer memory; 512m heap OOMs (measured).
       - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
     networks:
-      - shallot-internal
+      shallot-internal:
+        # The indexer certificate SAN is DNS:wazuh-indexer.local only, so TLS
+        # clients must reach it under that name to keep hostname verification
+        # on. The alias resolves it on the compose network; no regeneration.
+        aliases:
+          - wazuh-indexer.local
     volumes:
       - wazuh-indexer-data:/usr/share/wazuh-indexer/data
       - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/internal_users.local.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
