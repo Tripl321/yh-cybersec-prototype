@@ -61,6 +61,19 @@ services:
         source: ./scripts/0-wazuh-uid.sh
         target: /etc/cont-init.d/0-wazuh-uid.sh
         read_only: true
+      # The manager's database holds the agent groups, and the image creates
+      # it empty at every start. 1-wazuh-group.sh puts the default group
+      # there before the daemons assign the groups of the enrolled agents.
+      - type: bind
+        source: ./scripts/1-wazuh-group.sh
+        target: /etc/cont-init.d/1-wazuh-group.sh
+        read_only: true
+      # The shipped ruleset has no rule for the lab's JSON events, so the
+      # manager would drop them before they reach the indexer.
+      - type: bind
+        source: ./config/wazuh_manager/local_rules.xml
+        target: /var/ossec/etc/rules/local_rules.xml
+        read_only: true
     # The manager image starts as root and its init copies the permanent data
     # into the volumes, then drops to the wazuh user. Under rootless Podman
     # that needs keep-id and the ownership capabilities; the image entrypoint

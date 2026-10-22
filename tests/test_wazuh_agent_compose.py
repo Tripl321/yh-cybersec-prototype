@@ -95,3 +95,20 @@ def test_uid_fix_does_not_depend_on_the_working_directory():
     script = Path("shallot-infra/scripts/0-wazuh-uid.sh").read_text(encoding="utf-8")
     assert '$7 == "/bin/sh"' in script
     assert '$6 == "/"' not in script
+
+
+def test_agent_collects_the_lab_events():
+    assert "<log_format>json</log_format>" in TEMPLATE
+    assert "<location>/opt/shallot/lab/events.json</location>" in TEMPLATE
+
+
+def test_agent_reads_the_lab_events_read_only():
+    mounts = {mount["target"]: mount for mount in SERVICE["volumes"]}
+    lab = mounts["/opt/shallot/lab"]
+    assert lab["source"].endswith("/lab")
+    assert lab["read_only"] is True
+
+
+def test_prepare_script_creates_the_lab_event_file():
+    assert '"lab"' in PREPARE
+    assert 'events = lab / "events.json"' in PREPARE

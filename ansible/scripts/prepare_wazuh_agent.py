@@ -119,6 +119,15 @@ def main() -> int:
     # The enrollment key is a secret: it stays readable by its owner only.
     (tree / "etc" / "client.keys").chmod(0o600)
 
+    # The lab's event file lives next to the tree, not inside it, so a
+    # re-prepare does not drop the events and the host user keeps writing to
+    # it while the agent reads it read-only.
+    lab = target / "lab"
+    lab.mkdir(parents=True, exist_ok=True)
+    events = lab / "events.json"
+    if not events.exists():
+        events.touch()
+
     print(f"agent tree ready: {tree} (agent {name_file.read_text().strip()})")
     return 0
 

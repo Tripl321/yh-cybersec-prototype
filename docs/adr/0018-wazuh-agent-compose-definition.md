@@ -93,10 +93,11 @@ container, explicit human approval:
 
 ## Follow-ups
 
-- The agent's monitoring policy is still empty; a localfile or a fuller
-  `ossec.conf` is a separate increment.
-- The manager image ships no `etc/groups`, so new agents are registered
-  without a group. This belongs to the manager increment, not the agent one.
+- The agent's monitoring policy is empty; ADR 0020 adds the lab event file and
+  the manager rule that turns its events into alerts.
+- ADR 0019 corrects runtime evidence 6 above: the image ships no `etc/groups`
+  because there is no such file. The groups live in the manager's database,
+  and the database starts without a row for `default`.
 - The manager `ossec.conf` monitors almost nothing; a fuller
   `wazuh_manager.conf` is a separate increment.
 
