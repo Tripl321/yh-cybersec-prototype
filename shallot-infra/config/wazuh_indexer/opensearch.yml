@@ -5,6 +5,10 @@
 #   cluster.initial_master_nodes conflicts with single-node mode)
 # - certificate paths under path.conf (/usr/share/wazuh-indexer/certs);
 #   /etc/wazuh-indexer/certs is outside every SecurityManager file grant
+# - plugins.security.allow_default_init_securityindex: true, as in the
+#   official Wazuh 4.9.0 single-node config. The image entrypoint runs
+#   securityadmin only in a commented-out block, so without this flag the
+#   security index is never created and the plugin stays uninitialized.
 # Contains no secrets.
 discovery.type: single-node
 network.host: "0.0.0.0"
@@ -37,6 +41,7 @@ plugins.security.nodes_dn:
 plugins.security.restapi.roles_enabled:
 - "all_access"
 - "security_rest_api_access"
+plugins.security.allow_default_init_securityindex: true
 
 plugins.security.system_indices.enabled: true
 plugins.security.system_indices.indices: [".plugins-ml-model", ".plugins-ml-task", ".opendistro-alerting-config", ".opendistro-alerting-alert*", ".opendistro-anomaly-results*", ".opendistro-anomaly-detector*", ".opendistro-anomaly-checkpoints", ".opendistro-anomaly-detection-state", ".opendistro-reports-*", ".opensearch-notifications-*", ".opensearch-notebooks", ".opensearch-observability", ".opendistro-asynchronous-search-response*", ".replication-metadata-store"]

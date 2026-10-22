@@ -62,6 +62,14 @@ USER_DEFINITIONS = {
         "backend_roles": ["snapshotrestore"],
         "description": "SHALLOT snapshot and restore user",
     },
+    # The manager ships alerts as filebeat; it must not need the admin account.
+    # The role itself is granted by username in roles_mapping.yml.
+    "filebeat": {
+        "env": "WAZUH_FILEBEAT_PASSWORD",
+        "reserved": False,
+        "backend_roles": ["filebeat_writer"],
+        "description": "SHALLOT filebeat shipper user",
+    },
 }
 
 

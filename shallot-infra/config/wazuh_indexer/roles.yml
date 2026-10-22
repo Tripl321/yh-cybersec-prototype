@@ -1,0 +1,36 @@
+_meta:
+  type: "roles"
+  config_version: 2
+
+# Allows the filebeat shipper to write alert documents to wazuh-* indices
+# and monitor cluster health. No read, no delete, no cluster admin.
+filebeat_writer:
+  reserved: true
+  hidden: false
+  cluster_permissions:
+    - "cluster_monitor"
+    - "indices:admin/template/put"
+    - "cluster:admin/ingest/pipeline/put"
+    - "indices:data/write/bulk"
+  index_permissions:
+    - index_patterns:
+        - "wazuh-*"
+      dls: ""
+      fls: []
+      masked_fields: []
+      allowed_actions:
+        - "write"
+        - "create"
+        - "index"
+        - "indices:admin/create"
+    - index_patterns:
+        - ".opensearch-observability"
+      dls: ""
+      fls: []
+      masked_fields: []
+      allowed_actions:
+        - "write"
+        - "create"
+        - "index"
+  static: false
+  description: "SHALLOT filebeat shipper role - write alerts only"

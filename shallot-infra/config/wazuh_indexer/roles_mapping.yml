@@ -1,0 +1,19 @@
+---
+_meta:
+  type: "rolesmapping"
+  config_version: 2
+
+# Map the filebeat shipper user to a write-only role for wazuh alert indices.
+filebeat_writer:
+  reserved: false
+  hidden: false
+  backend_roles: []
+  hosts: []
+  users:
+  - "filebeat"
+
+# Map the admin user to all_access (official default).
+all_access:
+  reserved: false
+  backend_roles:
+  - "admin"

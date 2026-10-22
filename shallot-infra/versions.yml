@@ -21,6 +21,22 @@ images:
     version: "4.9.0"
     profile: "wazuh-secure"
     reference: "wazuh/wazuh-manager:4.9.0@sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004"
+  wazuh-agent:
+    version: "4.9.0"
+    profile: "wazuh-secure"
+    reference: "wazuh/wazuh-manager:4.9.0@sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004"
+    note: >-
+      No official wazuh/wazuh-agent image exists for 4.9.0; the first published
+      tag is 4.13.0 and a newer agent cannot register with a 4.9.0 manager.
+      The agent therefore runs the pinned 4.9.0 manager image with the
+      official 4.9.0 agent package bind-mounted from the host tree.
+
+packages:
+  wazuh-agent:
+    version: "4.9.0-1"
+    url: "https://packages.wazuh.com/4.x/yum/wazuh-agent-4.9.0-1.x86_64.rpm"
+    sha256: "13c8ec9bf3cdb22be4e0a498d3e2cb712b7cc0f60a91c9527dde59885e576e4d"
+    verified_at: "2026-10-21"
 
 blocked_components:
   latitude:
