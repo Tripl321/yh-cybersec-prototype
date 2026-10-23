@@ -18,6 +18,10 @@ set -euo pipefail
 # Podman injects the host user as "<name>:*:<uid>:<gid>:<gecos>:/:/bin/sh".
 # No image account has that shape, so it identifies the keep-id account.
 KEEPID_ACCOUNT=$(getent passwd | awk -F: '$6 == "/" && $7 == "/bin/sh" { print $1; exit }')
+# Podman injects the host user as "<name>:*:<uid>:<gid>:<gecos>:<home>:/bin/sh".
+# The home directory follows the container working directory, so only the shell
+# identifies the account; no image account uses /bin/sh.
+KEEPID_ACCOUNT=$(getent passwd | awk -F: '$7 == "/bin/sh" { print $1; exit }')
 if [ -z "$KEEPID_ACCOUNT" ]; then
   echo "wazuh-uid: no keep-id account found; is userns_mode keep-id set?" >&2
   exit 1
