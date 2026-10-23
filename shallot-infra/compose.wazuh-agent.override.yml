@@ -31,13 +31,6 @@ services:
       - type: bind
         source: "${SHALLOT_WAZUH_AGENT_DIR:?SHALLOT_WAZUH_AGENT_DIR is required}/var/ossec"
         target: /var/ossec
-      # The lab's event file sits next to the agent tree, so the host user
-      # writes to it while the agent only reads it. The path is outside
-      # /var/ossec because the UID fix chowns the whole tree to the agent.
-      - type: bind
-        source: "${SHALLOT_WAZUH_AGENT_DIR:?SHALLOT_WAZUH_AGENT_DIR is required}/lab"
-        target: /opt/shallot/lab
-        read_only: true
       - type: bind
         source: ../ansible/scripts/wazuh-agent-entrypoint.sh
         target: /opt/shallot/wazuh-agent-entrypoint.sh

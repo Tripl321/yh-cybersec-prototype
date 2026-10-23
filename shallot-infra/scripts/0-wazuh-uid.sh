@@ -28,6 +28,4 @@ TARGET_UID=$(id -u "$KEEPID_ACCOUNT")
 if [ "$(id -u wazuh)" != "$TARGET_UID" ]; then
   usermod -o -u "$TARGET_UID" wazuh
 fi
-# The local rules file is a read-only mount, so the chown of the tree fails on
-# that file; the rest of the tree still has to change owner.
-chown -R wazuh:wazuh /var/ossec || true
+chown -R wazuh:wazuh /var/ossec

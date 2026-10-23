@@ -16,5 +16,3 @@ Se även [GLOSSARY.md](GLOSSARY.md) för domänmodellen.
 - [0016-wazuh-manager-tls](0016-wazuh-manager-tls.md) — Manager till indexer över TLS med värdnamnsverifiering.
 - [0017-wazuh-agent-enrollment-and-uid-mapping](0017-wazuh-agent-enrollment-and-uid-mapping.md) — Agentregistrering, port 1514 och UID-mappning under keep-id.
 - [0018-wazuh-agent-compose-definition](0018-wazuh-agent-compose-definition.md) — Reproducerbar agent-container från pinnat agentpaket.
-- [0019-wazuh-manager-default-group](0019-wazuh-manager-default-group.md) — `default`-gruppen skrivs i managerns databas innan daemonerna startar.
-- [0020-wazuh-agent-lab-event-policy](0020-wazuh-agent-lab-event-policy.md) — Agenten läser labbets JSON-händelser; lokal regel 100100 gör dem till alerts.

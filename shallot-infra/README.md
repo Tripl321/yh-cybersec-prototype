@@ -129,30 +129,6 @@ The agent reaches the manager by its service name on the compose network and
 reports over TCP 1514. Without `SHALLOT_WAZUH_AGENT_DIR` the start fails
 instead of running an empty tree.
 
-The prepare script also creates `lab/events.json` next to the tree. That file
-is the agent's monitoring policy (ADR 0020): the agent reads it read-only at
-`/opt/shallot/lab/events.json`, one JSON object per line. Write an event and
-check that it reached the indexer:
-
-```fish
-echo '{"shallot":"lab","event":"door-open","node":"field-node-1"}' \
-    >> "$HOME/.local/share/shallot/wazuh-agent/lab/events.json"
-
-curl -sk -u "admin:$WAZUH_INDEXER_PASSWORD" \
-    "https://127.0.0.1:9200/wazuh-alerts-4.x-*/_search" \
-    -H 'Content-Type: application/json' \
-    -d '{"query":{"term":{"rule.id":"100100"}},"sort":[{"timestamp":"desc"}]}'
-```
-
-The manager's local rules file (`config/wazuh_manager/local_rules.xml`) turns
-the lab events into alerts; without a matching rule the manager drops them
-before they reach the indexer.
-
-The manager's database starts without a row for the `default` group, so
-`scripts/1-wazuh-group.sh` puts the row in before the daemons start (ADR
-0019). Without it the manager logs `There was an error assigning the groups to
-agent` and the agent belongs to no group.
-
 ## Latitude
 
 The former `middayai/latitude:latest` reference is not publicly accessible and
