@@ -32,6 +32,7 @@ publishes TCP and UDP 1514; the base overlay published only the API port
    `1-config-filebeat` and `2-manager` (which start the daemons). It gives the
    `wazuh` account the mapped keep-id UID and chowns `/var/ossec` to the
    `wazuh` account. The keep-id account is found by the shape Podman injects
+   it in (`<name>:*:<uid>:<gid>:<gecos>:/:/bin/sh`); no account name is
    it in (`<name>:*:<uid>:<gid>:<gecos>:<home>:/bin/sh`); no account name is
    hardcoded. The keep-id account itself cannot be moved: s6 PID 1 runs with
    it and `usermod` refuses to change the UID of an account that a running
@@ -48,6 +49,7 @@ publishes TCP and UDP 1514; the base overlay published only the API port
    port 1515 and then reports over TCP 1514. The agent process is not part of
    the Compose stack: the lab runs it from the pinned `wazuh-agent` 4.9.0
    package in its own rootless container, so the manager stack stays the only
+   managed runtime.
    managed runtime. ADR 0018 replaces this with a Compose definition for the
    agent container.
 5. The enrollment key never leaves the lab: the agent's `client.keys` is
@@ -75,6 +77,11 @@ container, explicit human approval:
 4. Enrollment: `agent-auth` against `127.0.0.1:1515` returned
    `Valid key received` for the agent name `shallot-agent-clean`, agent ID
    006.
+5. Reporting: the agent connected over TCP `127.0.0.1:1514` with AES and
+   its alerts arrived in `wazuh-alerts-4.x-2026.10.21` with `agent.id: "006"`;
+   the index grew from 561 to 566 documents. After a manager restart the
+   agent reconnected on its own and the manager logged
+   `New wazuh agent connected.`
 5. Reporting: the agent connected over TCP `127.0.0.1:1514` with AES and the
    indexer documents for `agent.id: "006"` carry the manager's own events:
    rule 501 `New wazuh agent connected.`, rule 506 `Wazuh agent stopped.` and
@@ -96,6 +103,8 @@ new green pipeline before the merge.
 
 - The manager `ossec.conf` still monitors almost nothing; a fuller
   `wazuh_manager.conf` is a separate increment.
+- The agent container is a local lab artifact and has no Compose or Quadlet
+  definition yet.
 - The agent container has no Compose or Quadlet definition yet; ADR 0018 adds
   the Compose definition and the reproducible package tree.
 

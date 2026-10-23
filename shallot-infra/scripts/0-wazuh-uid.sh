@@ -15,6 +15,9 @@ set -euo pipefail
 # cont-init.d order: after 0-wazuh-init (which still chowns to the old UID),
 # before 1-config-filebeat and 2-manager (which start the daemons).
 
+# Podman injects the host user as "<name>:*:<uid>:<gid>:<gecos>:/:/bin/sh".
+# No image account has that shape, so it identifies the keep-id account.
+KEEPID_ACCOUNT=$(getent passwd | awk -F: '$6 == "/" && $7 == "/bin/sh" { print $1; exit }')
 # Podman injects the host user as "<name>:*:<uid>:<gid>:<gecos>:<home>:/bin/sh".
 # The home directory follows the container working directory, so only the shell
 # identifies the account; no image account uses /bin/sh.
