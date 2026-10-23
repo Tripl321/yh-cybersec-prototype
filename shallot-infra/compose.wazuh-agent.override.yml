@@ -1,0 +1,56 @@
+# Explicit Wazuh agent overlay.
+#
+# The agent is part of the explicit Wazuh stack and stays behind the same
+# wazuh-secure profile as the indexer and the manager (ADR 0018).
+#
+# No official wazuh/wazuh-agent image exists for 4.9.0, so the agent runs the
+# pinned 4.9.0 manager image and takes its binaries from the official 4.9.0
+# agent package. The host tree is built by
+# ansible/scripts/prepare_wazuh_agent.py from the pinned package.
+services:
+  wazuh-agent:
+    profiles: ["wazuh-secure"]
+    image: "wazuh/wazuh-manager:4.9.0@sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004"
+    container_name: shallot-wazuh-agent
+    restart: unless-stopped
+    depends_on:
+      - wazuh
+    entrypoint:
+      - /bin/bash
+      - /opt/shallot/wazuh-agent-entrypoint.sh
+    # The agent resolves paths like etc/shared relative to the install
+    # directory, so the working directory has to be the tree root.
+    working_dir: /var/ossec
+    environment:
+      # The manager's service name on the compose network, not 127.0.0.1: the
+      # agent joins the same network instead of the host namespace.
+      - WAZUH_MANAGER_HOST=wazuh
+    networks:
+      - shallot-internal
+    volumes:
+      - type: bind
+        source: "${SHALLOT_WAZUH_AGENT_DIR:?SHALLOT_WAZUH_AGENT_DIR is required}/var/ossec"
+        target: /var/ossec
+      - type: bind
+        source: ../ansible/scripts/wazuh-agent-entrypoint.sh
+        target: /opt/shallot/wazuh-agent-entrypoint.sh
+        read_only: true
+      # The manager and the agent share the UID fix, because both run their
+      # daemons as the wazuh account under rootless Podman keep-id.
+      - type: bind
+        source: ./scripts/0-wazuh-uid.sh
+        target: /opt/shallot/0-wazuh-uid.sh
+        read_only: true
+    userns_mode: keep-id
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+      - SYS_CHROOT
+      - KILL

@@ -1,44 +1,57 @@
 # Explicit local-only TLS overlay. Opt-in; never start implicitly.
-# Requires certificates under the local SHALLOT TLS directory.
+# Strategy B (ADR 0015): the wrapper stages certificates from
+# SHALLOT_WAZUH_TLS_INPUT_DIR (official wazuh-certs-tool layout) into the
+# container-owned path.conf directory, and a corrected opensearch.yml points
+# the SSL settings at that directory. Env-based SSL settings are inert in this
+# image (rpm distribution, no env->-E conversion). No certificate or key is
+# bind-mounted.
 services:
   wazuh-indexer:
+    # keepid maps the host user to container UID 1000, so the wrapper can read
+    # the read-only host input directory and stage into the image user's own
+    # 0700 path.conf without any capabilities (cap_drop ALL is preserved).
+    userns_mode: keep-id
+    entrypoint:
+      - /usr/local/bin/wazuh-indexer-runtime-wrapper.sh
     environment:
-      - plugins.security.ssl.transport.pemcert_filepath=/etc/wazuh-indexer/certs/indexer.pem
-      - plugins.security.ssl.transport.pemkey_filepath=/etc/wazuh-indexer/certs/indexer-key.pem
-      - plugins.security.ssl.transport.pemtrustedcas_filepath=/etc/wazuh-indexer/certs/root-ca.pem
-      - plugins.security.ssl.http.enabled=true
-      - plugins.security.ssl.http.pemcert_filepath=/etc/wazuh-indexer/certs/indexer.pem
-      - plugins.security.ssl.http.pemkey_filepath=/etc/wazuh-indexer/certs/indexer-key.pem
-      - plugins.security.ssl.http.pemtrustedcas_filepath=/etc/wazuh-indexer/certs/root-ca.pem
-      - plugins.security.ssl.http.enabled_protocols=TLSv1.2,TLSv1.3
-      - plugins.security.ssl.http.clientauth_mode=OPTIONAL
+      - WAZUH_TLS_INPUT_DIR=/run/wazuh-tls-input
     volumes:
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/ca.crt
-        target: /etc/wazuh-indexer/certs/root-ca.pem
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}
+        target: /run/wazuh-tls-input
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/wazuh-indexer.crt
-        target: /etc/wazuh-indexer/certs/indexer.pem
+        source: ./config/wazuh_indexer/opensearch.yml
+        target: /usr/share/wazuh-indexer/opensearch.yml
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/wazuh-indexer.key
-        target: /etc/wazuh-indexer/certs/indexer-key.pem
+        source: ../ansible/scripts/wazuh-indexer-runtime-wrapper.sh
+        target: /usr/local/bin/wazuh-indexer-runtime-wrapper.sh
         read_only: true
+
   wazuh:
+    # Official wazuh-docker 4.9.0 model: the manager image configures filebeat
+    # from these variables (init script 1-config-filebeat). The indexer name
+    # must match the certificate SAN (DNS:wazuh-indexer.local) or full
+    # verification fails.
     environment:
-      - INDEXER_URL=https://wazuh-indexer:9200
-      - INDEXER_SSL_VERIFY=true
+      - INDEXER_URL=https://wazuh-indexer.local:9200
+      - INDEXER_USERNAME=filebeat
+      - "INDEXER_PASSWORD=${WAZUH_FILEBEAT_PASSWORD:?WAZUH_FILEBEAT_PASSWORD is required}"
+      - FILEBEAT_SSL_VERIFICATION_MODE=full
+      - SSL_CERTIFICATE_AUTHORITIES=/etc/ssl/root-ca.pem
+      - SSL_CERTIFICATE=/etc/ssl/filebeat.pem
+      - SSL_KEY=/etc/ssl/filebeat.key
     volumes:
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/ca.crt
-        target: /etc/wazuh-indexer/certs/root-ca.pem
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}/root-ca.pem
+        target: /etc/ssl/root-ca.pem
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/manager/wazuh-manager.crt
-        target: /etc/wazuh-tls/wazuh-manager.crt
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}/filebeat/filebeat.pem
+        target: /etc/ssl/filebeat.pem
         read_only: true
       - type: bind
-        source: /home/johannes/.local/share/shallot/wazuh-tls/manager/wazuh-manager.key
-        target: /etc/wazuh-tls/wazuh-manager.key
+        source: ${SHALLOT_WAZUH_TLS_INPUT_DIR:?SHALLOT_WAZUH_TLS_INPUT_DIR is required}/filebeat/filebeat-key.pem
+        target: /etc/ssl/filebeat.key
         read_only: true

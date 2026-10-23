@@ -12,9 +12,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 BASE_COMPOSE_PATH = ROOT / "shallot-infra" / "compose.yml"
 WAZUH_COMPOSE_PATH = ROOT / "shallot-infra" / "compose.wazuh.yml"
+WAZUH_AGENT_COMPOSE_PATH = ROOT / "shallot-infra" / "compose.wazuh-agent.override.yml"
 MANIFEST_PATH = ROOT / "shallot-infra" / "versions.yml"
 GITIGNORE_PATH = ROOT / "shallot-infra" / ".gitignore"
 DIGEST_RE = re.compile(r"@sha256:[0-9a-f]{64}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _services(path: Path) -> dict:
@@ -28,10 +30,11 @@ def validate() -> list[str]:
     wazuh_text = WAZUH_COMPOSE_PATH.read_text(encoding="utf-8")
     base_services = _services(BASE_COMPOSE_PATH)
     wazuh_services = _services(WAZUH_COMPOSE_PATH)
-    services = {**base_services, **wazuh_services}
+    agent_services = _services(WAZUH_AGENT_COMPOSE_PATH)
+    services = {**base_services, **wazuh_services, **agent_services}
     manifest = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
 
-    if {"wazuh", "wazuh-indexer"} & set(base_services):
+    if {"wazuh", "wazuh-indexer", "wazuh-agent"} & set(base_services):
         errors.append("Wazuh services must not exist in the default Compose file")
     if "WAZUH_INDEXER_PASSWORD" in base_text:
         errors.append("Default Compose file unexpectedly depends on a Wazuh secret")
@@ -80,6 +83,30 @@ def validate() -> list[str]:
         for mount in internal_users_mounts
     ):
         errors.append("Wazuh indexer lacks the local internal_users mount")
+
+    agent = agent_services.get("wazuh-agent", {})
+    if "wazuh-secure" not in agent.get("profiles", []):
+        errors.append("Wazuh agent is not gated by the wazuh-secure profile")
+    if agent.get("working_dir") != "/var/ossec":
+        errors.append("Wazuh agent does not run in the agent install directory")
+    agent_sources = [
+        mount.get("source", "")
+        for mount in agent.get("volumes", [])
+        if isinstance(mount, dict)
+    ]
+    if not any("SHALLOT_WAZUH_AGENT_DIR:?" in source for source in agent_sources):
+        errors.append("Wazuh agent does not require an explicit agent tree directory")
+
+    images = manifest.get("images", {})
+    if images.get("wazuh-agent", {}).get("reference") != images.get("wazuh", {}).get(
+        "reference"
+    ):
+        errors.append("Wazuh agent image differs from the manager image")
+    package = manifest.get("packages", {}).get("wazuh-agent", {})
+    if not package.get("url", "").startswith("https://"):
+        errors.append("Wazuh agent package has no pinned https url")
+    if not SHA256_RE.match(package.get("sha256", "")):
+        errors.append("Wazuh agent package has no pinned sha256 digest")
 
     if "latitude" in services:
         errors.append("Unsupported single-image Latitude service remains enabled")

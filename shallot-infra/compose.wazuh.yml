@@ -11,12 +11,20 @@ services:
       - "127.0.0.1:9200:9200"
     environment:
       - discovery.type=single-node
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      # 4.9.0 needs ~291MB direct buffer memory; 512m heap OOMs (measured).
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
     networks:
-      - shallot-internal
+      shallot-internal:
+        # The indexer certificate SAN is DNS:wazuh-indexer.local only, so TLS
+        # clients must reach it under that name to keep hostname verification
+        # on. The alias resolves it on the compose network; no regeneration.
+        aliases:
+          - wazuh-indexer.local
     volumes:
       - wazuh-indexer-data:/usr/share/wazuh-indexer/data
       - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/internal_users.local.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml:ro"
+      - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/roles_mapping.yml:/usr/share/wazuh-indexer/opensearch-security/roles_mapping.yml:ro"
+      - "${SHALLOT_WAZUH_CONFIG_DIR:-./config/wazuh_indexer}/roles.yml:/usr/share/wazuh-indexer/opensearch-security/roles.yml:ro"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -33,6 +41,7 @@ services:
       - wazuh-indexer
     ports:
       - "127.0.0.1:55000:55000"
+      - "127.0.0.1:1514:1514/tcp"
       - "127.0.0.1:1514:1514/udp"
       - "127.0.0.1:1515:1515"
     environment:
@@ -45,7 +54,27 @@ services:
       - wazuh-data:/var/ossec/data
       - wazuh-etc:/var/ossec/etc
       - wazuh-logs:/var/ossec/logs
+      # s6-overlay runs cont-init.d scripts in name order, so this lands after
+      # 0-wazuh-init (which chowns to the old UID) and before 2-manager (which
+      # starts the daemons).
+      - type: bind
+        source: ./scripts/0-wazuh-uid.sh
+        target: /etc/cont-init.d/0-wazuh-uid.sh
+        read_only: true
+    # The manager image starts as root and its init copies the permanent data
+    # into the volumes, then drops to the wazuh user. Under rootless Podman
+    # that needs keep-id and the ownership capabilities; the image entrypoint
+    # runs securityadmin only in a commented-out block.
+    userns_mode: keep-id
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+      - SYS_CHROOT
+      - KILL
