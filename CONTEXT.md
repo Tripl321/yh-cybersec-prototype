@@ -110,6 +110,7 @@ _Avoid_: manual, offline,传统
 
 ### Dokumentation
 
+- Aktiv konceptspecifikation: `docs/SHALLOT-concept.md` (dockad UART; LoRa utanför scope)
 - Full projektbeskrivning: `docs/SHALLOT-project.md`
 - Wayfinder-map: `docs/wayfinder-map.md`
 - Specifikation: `docs/specification.md`
@@ -127,6 +128,7 @@ _Avoid_: manual, offline,传统
 - Budget: 4000 SEK | Tid: 4 veckor MVP
 
 ## Dokumentation
+- Aktiv konceptspecifikation: `docs/SHALLOT-concept.md` (dockad UART; LoRa utanför scope)
 - Full projektbeskrivning: `docs/SHALLOT-project.md`
 - Wayfinder-map: `docs/wayfinder-map.md`
 - Specifikation: `docs/specification.md`

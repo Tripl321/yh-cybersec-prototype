@@ -1,5 +1,10 @@
 # System Specification & Architecture: Project SHALLOT
 
+> **Superseded (2026-10-25).** The active concept is
+> [`docs/SHALLOT-concept.md`](../SHALLOT-concept.md): docked UART between PAW
+> and DEN, with LoRa out of scope. This document is retained as the LoRa-era
+> concept and must not be used as the current architecture.
+
 Secure Hardware-Assisted Local LoRa Trust (Industrial IAM Framework)
 
 ## 1. Executive Summary & Product Vision
