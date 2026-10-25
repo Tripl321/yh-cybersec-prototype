@@ -43,6 +43,22 @@ ansible-playbook playbooks/bootstrap_wazuh.yml \
 Do not run the real command until the PR is reviewed. The pull flag permits only
 the already digest-pinned Wazuh indexer image. No secret is printed.
 
+## Wazuh bring-up wizard
+
+`scripts/wazuh-bringup-wizard.sh` walks the full local bring-up: credential
+generation, TLS input verification, agent tree preparation, path persistence,
+start, health checks, and optional teardown. It asks for confirmation before
+generating credentials, starting containers, or tearing down, and never prints
+a secret.
+
+```fish
+ansible/scripts/wazuh-bringup-wizard.sh
+```
+
+TLS certificate generation remains a separate reviewed increment (ADR
+0014/0015); the wizard verifies an existing input directory and stops if it is
+incomplete.
+
 ## Remaining Wazuh blockers
 
 Credential generation does not make the Wazuh runtime production-ready. TLS
