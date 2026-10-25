@@ -1,0 +1,12 @@
+<!-- SHALLOT lab rules for the Wazuh manager.
+
+     The agent forwards the lab's JSON events, and the shipped ruleset has no
+     rule for them: an event without a matching rule is dropped before it
+     reaches the indexer. This local rule turns the lab events into alerts
+     that carry the agent id (ADR 0020). -->
+<group name="local,syslog,shallot-lab,">
+  <rule id="100100" level="5">
+    <decoded_as>json</decoded_as>
+    <description>Shallot lab JSON event.</description>
+  </rule>
+</group>
